@@ -15,10 +15,13 @@
     "test": "turbo run test",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
-    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm build"
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "pnpm format:check && pnpm typecheck && pnpm lint && pnpm test && pnpm build"
   },
   "devDependencies": {
     "eslint": "^10.7.0",
+    "prettier": "3.9.5",
     "turbo": "^2.10.4",
     "typescript": "^6.0.3"
   }
