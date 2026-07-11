@@ -47,4 +47,3 @@ Construir uma solução de monitoramento industrial com:
 A fundação do repositório está sendo configurada.
 
 Os comandos de desenvolvimento, testes e build serão documentados quando estiverem implementados.
-EOF
