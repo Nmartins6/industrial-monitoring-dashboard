@@ -6,12 +6,14 @@ import {
 } from 'node:http';
 
 import {
+  serializeAlert,
   serializeMachineStatus,
   serializeMetricHistory,
 } from '@industrial-monitoring/contracts';
 
 import { getMachineStatusSnapshot } from './machines/machine-status.js';
 import { getMachineMetricHistory } from './machines/metric-history.js';
+import { getMachineAlertHistory } from './machines/alert-history.js';
 
 interface HealthResponse {
   status: 'ok';
@@ -50,6 +52,14 @@ function getMachineIdFromMetricHistoryPath(
   return match?.[1];
 }
 
+function getMachineIdFromAlertHistoryPath(
+  pathname: string,
+): string | undefined {
+  const match = /^\/api\/v1\/machines\/([^/]+)\/alerts$/.exec(pathname);
+
+  return match?.[1];
+}
+
 export function handleRequest(
   request: IncomingMessage,
   response: ServerResponse,
@@ -63,6 +73,38 @@ export function handleRequest(
     };
 
     sendJson(response, 200, healthResponse);
+    return;
+  }
+
+  const alertHistoryMachineId = getMachineIdFromAlertHistoryPath(
+    requestUrl.pathname,
+  );
+
+  if (alertHistoryMachineId !== undefined) {
+    if (request.method !== 'GET') {
+      response.setHeader('allow', 'GET');
+
+      const errorResponse: ErrorResponse = {
+        error: 'Method not allowed',
+      };
+
+      sendJson(response, 405, errorResponse);
+      return;
+    }
+
+    const alertHistory = getMachineAlertHistory(alertHistoryMachineId);
+
+    if (alertHistory === undefined) {
+      const errorResponse: ErrorResponse = {
+        error: 'Machine not found',
+      };
+
+      sendJson(response, 404, errorResponse);
+      return;
+    }
+
+    sendJson(response, 200, alertHistory.map(serializeAlert));
+
     return;
   }
 
