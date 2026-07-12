@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 
 import type {
   ConnectedEvent,
+  MachineStatus,
   MachineStatusUpdatedEvent,
   MetricRecordedEvent,
   RealtimeEvent,
@@ -15,6 +16,8 @@ import type {
   RealtimeScheduledTask,
   RealtimeScheduler,
 } from '../src/realtime/realtime-scheduler.js';
+
+import type { MachineTelemetrySimulator } from '../src/machines/machine-telemetry-simulator.js';
 
 class ManualRealtimeScheduler implements RealtimeScheduler {
   private callback: (() => void) | undefined;
@@ -42,6 +45,26 @@ class ManualRealtimeScheduler implements RealtimeScheduler {
     }
 
     this.callback();
+  }
+}
+
+class DeterministicMachineTelemetrySimulator implements MachineTelemetrySimulator {
+  next(previousStatus: MachineStatus, timestamp: Date): MachineStatus {
+    return {
+      id: previousStatus.id,
+      timestamp: new Date(timestamp.getTime()),
+      state: previousStatus.state,
+      metrics: {
+        temperature: previousStatus.metrics.temperature + 1,
+        rpm: previousStatus.metrics.rpm - 50,
+        uptime: previousStatus.metrics.uptime + 3,
+        efficiency:
+          Math.round((previousStatus.metrics.efficiency + 0.4) * 10) / 10,
+      },
+      oee: {
+        ...previousStatus.oee,
+      },
+    };
   }
 }
 
@@ -135,12 +158,15 @@ async function readNextSseFrameWithTimeout(
 describe('Realtime machine status updates', () => {
   const scheduler = new ManualRealtimeScheduler();
 
+  const telemetrySimulator = new DeterministicMachineTelemetrySimulator();
+
   let server: Server;
   let baseUrl: string;
 
   beforeAll(async () => {
     server = createHttpServer({
       realtimeScheduler: scheduler,
+      machineTelemetrySimulator: telemetrySimulator,
     });
 
     server.listen(0, '127.0.0.1');
@@ -228,10 +254,10 @@ describe('Realtime machine status updates', () => {
           timestamp: expect.any(String),
           state: 'RUNNING',
           metrics: {
-            temperature: 72,
-            rpm: 1200,
-            uptime: 28_800,
-            efficiency: 92,
+            temperature: 73,
+            rpm: 1150,
+            uptime: 28_803,
+            efficiency: 92.4,
           },
           oee: {
             overall: 88.4,
@@ -268,9 +294,9 @@ describe('Realtime machine status updates', () => {
         emittedAt: expect.any(String),
         payload: {
           timestamp: expect.any(String),
-          temperature: 72,
-          rpm: 1200,
-          efficiency: 92,
+          temperature: 73,
+          rpm: 1150,
+          efficiency: 92.4,
         },
       });
 
@@ -381,6 +407,34 @@ describe('Realtime machine status updates', () => {
         secondStatusFrame.event as MachineStatusUpdatedEvent;
 
       const secondMetricEvent = secondMetricFrame.event as MetricRecordedEvent;
+
+      expect(firstStatusEvent.payload.metrics).toEqual({
+        temperature: 73,
+        rpm: 1150,
+        uptime: 28_803,
+        efficiency: 92.4,
+      });
+
+      expect(secondStatusEvent.payload.metrics).toEqual({
+        temperature: 74,
+        rpm: 1100,
+        uptime: 28_806,
+        efficiency: 92.8,
+      });
+
+      expect(firstMetricEvent.payload).toEqual({
+        timestamp: firstStatusEvent.payload.timestamp,
+        temperature: 73,
+        rpm: 1150,
+        efficiency: 92.4,
+      });
+
+      expect(secondMetricEvent.payload).toEqual({
+        timestamp: secondStatusEvent.payload.timestamp,
+        temperature: 74,
+        rpm: 1100,
+        efficiency: 92.8,
+      });
 
       expect(firstStatusFrame.id).toBe(firstStatusEvent.id);
 
