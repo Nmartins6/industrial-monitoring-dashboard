@@ -23,6 +23,11 @@ import {
   type RealtimeScheduler,
 } from './realtime/realtime-scheduler.js';
 
+import {
+  createMachineTelemetrySimulator,
+  type MachineTelemetrySimulator,
+} from './machines/machine-telemetry-simulator.js';
+
 import type { AlertRepository } from './machines/alert-repository.js';
 import { createInMemoryAlertRepository } from './machines/in-memory-alert-repository.js';
 import { getMachineStatusSnapshot } from './machines/machine-status.js';
@@ -45,6 +50,7 @@ interface AlertAcknowledgementPathParameters {
 export interface CreateHttpServerOptions {
   alertRepository?: AlertRepository;
   realtimeScheduler?: RealtimeScheduler;
+  machineTelemetrySimulator?: MachineTelemetrySimulator;
 }
 
 function sendJson(
@@ -115,6 +121,7 @@ export function handleRequest(
   response: ServerResponse,
   alertRepository: AlertRepository,
   realtimeScheduler: RealtimeScheduler,
+  machineTelemetrySimulator: MachineTelemetrySimulator,
 ): void {
   const requestUrl = new URL(request.url ?? '/', 'http://localhost');
 
@@ -153,6 +160,8 @@ export function handleRequest(
       return;
     }
 
+    let currentMachineStatus = machineStatus;
+
     const emittedAt = new Date().toISOString();
 
     const connectedEvent = createConnectedEvent({
@@ -168,13 +177,14 @@ export function handleRequest(
         return;
       }
 
-      const currentMachineStatus = getMachineStatusSnapshot(eventsMachineId);
+      const updateTimestamp = new Date();
 
-      if (currentMachineStatus === undefined) {
-        return;
-      }
+      currentMachineStatus = machineTelemetrySimulator.next(
+        currentMachineStatus,
+        updateTimestamp,
+      );
 
-      const updateEmittedAt = new Date().toISOString();
+      const updateEmittedAt = updateTimestamp.toISOString();
 
       const serializedMachineStatus =
         serializeMachineStatus(currentMachineStatus);
@@ -362,7 +372,16 @@ export function createHttpServer(
   const realtimeScheduler =
     options.realtimeScheduler ?? systemRealtimeScheduler;
 
+  const machineTelemetrySimulator =
+    options.machineTelemetrySimulator ?? createMachineTelemetrySimulator();
+
   return createServer((request, response) => {
-    handleRequest(request, response, alertRepository, realtimeScheduler);
+    handleRequest(
+      request,
+      response,
+      alertRepository,
+      realtimeScheduler,
+      machineTelemetrySimulator,
+    );
   });
 }
