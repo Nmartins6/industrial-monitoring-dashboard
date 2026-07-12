@@ -12,7 +12,8 @@
     "@industrial-monitoring/typescript-config": "workspace:*",
     "@jest/globals": "30.4.1",
     "@types/node": "^26.1.1",
-    "jest": "30.4.2"
+    "jest": "30.4.2",
+    "tsx": "^4.23.0"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -22,7 +23,8 @@
     "test:compile": "node -e \"require('node:fs').rmSync('.test-dist',{recursive:true,force:true})\" && tsc -p tsconfig.test.json",
     "test:run": "NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.js --runInBand",
     "test": "pnpm test:compile && pnpm test:run",
-    "test:coverage": "pnpm test:compile && NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.js --coverage --runInBand"
+    "test:coverage": "pnpm test:compile && NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.js --coverage --runInBand",
+    "dev": "tsx watch src/server.ts"
   },
   "dependencies": {
     "@industrial-monitoring/contracts": "workspace:*"
