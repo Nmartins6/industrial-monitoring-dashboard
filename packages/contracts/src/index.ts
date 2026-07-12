@@ -11,6 +11,25 @@ export {
 export type { MetricHistory } from './metric-history.js';
 
 export {
+  createAlertCreatedEvent,
+  createAlertUpdatedEvent,
+  createConnectedEvent,
+  createMachineStatusUpdatedEvent,
+  createMetricRecordedEvent,
+} from './realtime-event-factory.js';
+
+export {
+  REALTIME_EVENT_TYPES,
+  type AlertCreatedEvent,
+  type AlertUpdatedEvent,
+  type ConnectedEvent,
+  type MachineStatusUpdatedEvent,
+  type MetricRecordedEvent,
+  type RealtimeEvent,
+  type RealtimeEventType,
+} from './realtime-event.js';
+
+export {
   serializeAlert,
   serializeMachineStatus,
   serializeMetricHistory,
