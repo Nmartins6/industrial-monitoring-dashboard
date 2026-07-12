@@ -1,0 +1,19 @@
+{
+  "name": "@industrial-monitoring/typescript-config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "base.json",
+    "node.json",
+    "react.json"
+  ],
+  "exports": {
+    "./base": "./base.json",
+    "./node": "./node.json",
+    "./react": "./react.json"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tests/node/tsconfig.json"
+  }
+}
