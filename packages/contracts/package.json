@@ -1,0 +1,25 @@
+{
+  "name": "@industrial-monitoring/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Contratos TypeScript compartilhados entre as aplicações do monorepo.",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.type-test.json",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@industrial-monitoring/eslint-config": "workspace:*",
+    "@industrial-monitoring/typescript-config": "workspace:*"
+  }
+}
