@@ -1,28 +1,12 @@
 import type { Alert } from '@industrial-monitoring/contracts';
 
+import type {
+  AcknowledgeMachineAlertResult,
+  AlertRepository,
+} from './alert-repository.js';
+
 interface StoredAlert extends Omit<Alert, 'timestamp'> {
   timestamp: string;
-}
-
-export type AcknowledgeMachineAlertResult =
-  | {
-      status: 'ACKNOWLEDGED';
-      alert: Alert;
-    }
-  | {
-      status: 'MACHINE_NOT_FOUND';
-    }
-  | {
-      status: 'ALERT_NOT_FOUND';
-    };
-
-export interface AlertStore {
-  acknowledgeMachineAlert(
-    machineId: string,
-    alertId: string,
-  ): AcknowledgeMachineAlertResult;
-
-  getMachineAlertHistory(machineId: string): Alert[] | undefined;
 }
 
 const INITIAL_ALERT_HISTORY_BY_MACHINE_ID: Readonly<
@@ -77,7 +61,7 @@ function mapStoredAlertToDomain(storedAlert: StoredAlert): Alert {
   };
 }
 
-export function createAlertStore(): AlertStore {
+export function createInMemoryAlertRepository(): AlertRepository {
   const alertHistoryByMachineId = createInitialAlertHistory();
 
   function getMachineAlertHistory(machineId: string): Alert[] | undefined {
