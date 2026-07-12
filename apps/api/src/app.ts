@@ -5,7 +5,12 @@ import {
   type ServerResponse,
 } from 'node:http';
 
+import { randomUUID } from 'node:crypto';
+
+import { openSseConnection, writeSseEvent } from './realtime/sse.js';
+
 import {
+  createConnectedEvent,
   serializeAlert,
   serializeMachineStatus,
   serializeMetricHistory,
@@ -13,7 +18,6 @@ import {
 
 import type { AlertRepository } from './machines/alert-repository.js';
 import { createInMemoryAlertRepository } from './machines/in-memory-alert-repository.js';
-
 import { getMachineStatusSnapshot } from './machines/machine-status.js';
 import { getMachineMetricHistory } from './machines/metric-history.js';
 
@@ -92,6 +96,12 @@ function getAlertAcknowledgementPathParameters(
   };
 }
 
+function getMachineIdFromEventsPath(pathname: string): string | undefined {
+  const match = /^\/api\/v1\/machines\/([^/]+)\/events$/.exec(pathname);
+
+  return match?.[1];
+}
+
 export function handleRequest(
   request: IncomingMessage,
   response: ServerResponse,
@@ -106,6 +116,44 @@ export function handleRequest(
     };
 
     sendJson(response, 200, healthResponse);
+    return;
+  }
+
+  const eventsMachineId = getMachineIdFromEventsPath(requestUrl.pathname);
+
+  if (eventsMachineId !== undefined) {
+    if (request.method !== 'GET') {
+      response.setHeader('allow', 'GET');
+
+      const errorResponse: ErrorResponse = {
+        error: 'Method not allowed',
+      };
+
+      sendJson(response, 405, errorResponse);
+      return;
+    }
+
+    const machineStatus = getMachineStatusSnapshot(eventsMachineId);
+
+    if (machineStatus === undefined) {
+      const errorResponse: ErrorResponse = {
+        error: 'Machine not found',
+      };
+
+      sendJson(response, 404, errorResponse);
+      return;
+    }
+
+    const emittedAt = new Date().toISOString();
+
+    const connectedEvent = createConnectedEvent({
+      id: randomUUID(),
+      emittedAt,
+    });
+
+    openSseConnection(response);
+    writeSseEvent(response, connectedEvent);
+
     return;
   }
 
