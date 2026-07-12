@@ -4,7 +4,30 @@ interface StoredAlert extends Omit<Alert, 'timestamp'> {
   timestamp: string;
 }
 
-const ALERT_HISTORY_BY_MACHINE_ID: Record<string, StoredAlert[]> = {
+export type AcknowledgeMachineAlertResult =
+  | {
+      status: 'ACKNOWLEDGED';
+      alert: Alert;
+    }
+  | {
+      status: 'MACHINE_NOT_FOUND';
+    }
+  | {
+      status: 'ALERT_NOT_FOUND';
+    };
+
+export interface AlertStore {
+  acknowledgeMachineAlert(
+    machineId: string,
+    alertId: string,
+  ): AcknowledgeMachineAlertResult;
+
+  getMachineAlertHistory(machineId: string): Alert[] | undefined;
+}
+
+const INITIAL_ALERT_HISTORY_BY_MACHINE_ID: Readonly<
+  Record<string, readonly StoredAlert[]>
+> = {
   'mixer-01': [
     {
       id: 'alert-001',
@@ -33,6 +56,20 @@ const ALERT_HISTORY_BY_MACHINE_ID: Record<string, StoredAlert[]> = {
   ],
 };
 
+function createInitialAlertHistory(): Record<string, StoredAlert[]> {
+  const alertHistory: Record<string, StoredAlert[]> = {};
+
+  for (const [machineId, storedAlerts] of Object.entries(
+    INITIAL_ALERT_HISTORY_BY_MACHINE_ID,
+  )) {
+    alertHistory[machineId] = storedAlerts.map((storedAlert) => ({
+      ...storedAlert,
+    }));
+  }
+
+  return alertHistory;
+}
+
 function mapStoredAlertToDomain(storedAlert: StoredAlert): Alert {
   return {
     ...storedAlert,
@@ -40,57 +77,54 @@ function mapStoredAlertToDomain(storedAlert: StoredAlert): Alert {
   };
 }
 
-export function getMachineAlertHistory(machineId: string): Alert[] | undefined {
-  const storedAlerts = ALERT_HISTORY_BY_MACHINE_ID[machineId];
+export function createAlertStore(): AlertStore {
+  const alertHistoryByMachineId = createInitialAlertHistory();
 
-  if (storedAlerts === undefined) {
-    return undefined;
-  }
+  function getMachineAlertHistory(machineId: string): Alert[] | undefined {
+    const storedAlerts = alertHistoryByMachineId[machineId];
 
-  return storedAlerts
-    .map(mapStoredAlertToDomain)
-    .sort(
-      (firstAlert, secondAlert) =>
-        secondAlert.timestamp.getTime() - firstAlert.timestamp.getTime(),
-    );
-}
-
-export type AcknowledgeMachineAlertResult =
-  | {
-      status: 'ACKNOWLEDGED';
-      alert: Alert;
+    if (storedAlerts === undefined) {
+      return undefined;
     }
-  | {
-      status: 'MACHINE_NOT_FOUND';
+
+    return storedAlerts
+      .map(mapStoredAlertToDomain)
+      .sort(
+        (firstAlert, secondAlert) =>
+          secondAlert.timestamp.getTime() - firstAlert.timestamp.getTime(),
+      );
+  }
+
+  function acknowledgeMachineAlert(
+    machineId: string,
+    alertId: string,
+  ): AcknowledgeMachineAlertResult {
+    const storedAlerts = alertHistoryByMachineId[machineId];
+
+    if (storedAlerts === undefined) {
+      return {
+        status: 'MACHINE_NOT_FOUND',
+      };
     }
-  | {
-      status: 'ALERT_NOT_FOUND';
-    };
 
-export function acknowledgeMachineAlert(
-  machineId: string,
-  alertId: string,
-): AcknowledgeMachineAlertResult {
-  const storedAlerts = ALERT_HISTORY_BY_MACHINE_ID[machineId];
+    const storedAlert = storedAlerts.find((alert) => alert.id === alertId);
 
-  if (storedAlerts === undefined) {
+    if (storedAlert === undefined) {
+      return {
+        status: 'ALERT_NOT_FOUND',
+      };
+    }
+
+    storedAlert.acknowledged = true;
+
     return {
-      status: 'MACHINE_NOT_FOUND',
+      status: 'ACKNOWLEDGED',
+      alert: mapStoredAlertToDomain(storedAlert),
     };
   }
-
-  const storedAlert = storedAlerts.find((alert) => alert.id === alertId);
-
-  if (storedAlert === undefined) {
-    return {
-      status: 'ALERT_NOT_FOUND',
-    };
-  }
-
-  storedAlert.acknowledged = true;
 
   return {
-    status: 'ACKNOWLEDGED',
-    alert: mapStoredAlertToDomain(storedAlert),
+    acknowledgeMachineAlert,
+    getMachineAlertHistory,
   };
 }
