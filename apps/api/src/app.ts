@@ -5,6 +5,10 @@ import {
   type ServerResponse,
 } from 'node:http';
 
+import { serializeMachineStatus } from '@industrial-monitoring/contracts';
+
+import { getMachineStatusSnapshot } from './machines/machine-status.js';
+
 interface HealthResponse {
   status: 'ok';
   timestamp: string;
@@ -17,7 +21,7 @@ interface ErrorResponse {
 function sendJson(
   response: ServerResponse,
   statusCode: number,
-  body: HealthResponse | ErrorResponse,
+  body: unknown,
 ): void {
   response.writeHead(statusCode, {
     'content-type': 'application/json; charset=utf-8',
@@ -26,22 +30,63 @@ function sendJson(
   response.end(JSON.stringify(body));
 }
 
+function getMachineIdFromStatusPath(pathname: string): string | undefined {
+  const match = /^\/api\/v1\/machines\/([^/]+)\/status$/.exec(pathname);
+
+  return match?.[1];
+}
+
 export function handleRequest(
   request: IncomingMessage,
   response: ServerResponse,
 ): void {
-  if (request.method === 'GET' && request.url === '/health') {
-    sendJson(response, 200, {
+  const requestUrl = new URL(request.url ?? '/', 'http://localhost');
+
+  if (request.method === 'GET' && requestUrl.pathname === '/health') {
+    const healthResponse: HealthResponse = {
       status: 'ok',
       timestamp: new Date().toISOString(),
-    });
+    };
+
+    sendJson(response, 200, healthResponse);
+    return;
+  }
+
+  const machineId = getMachineIdFromStatusPath(requestUrl.pathname);
+
+  if (machineId !== undefined) {
+    if (request.method !== 'GET') {
+      response.setHeader('allow', 'GET');
+
+      const errorResponse: ErrorResponse = {
+        error: 'Method not allowed',
+      };
+
+      sendJson(response, 405, errorResponse);
+      return;
+    }
+
+    const machineStatus = getMachineStatusSnapshot(machineId);
+
+    if (machineStatus === undefined) {
+      const errorResponse: ErrorResponse = {
+        error: 'Machine not found',
+      };
+
+      sendJson(response, 404, errorResponse);
+      return;
+    }
+
+    sendJson(response, 200, serializeMachineStatus(machineStatus));
 
     return;
   }
 
-  sendJson(response, 404, {
+  const errorResponse: ErrorResponse = {
     error: 'Route not found',
-  });
+  };
+
+  sendJson(response, 404, errorResponse);
 }
 
 export function createHttpServer(): Server {
