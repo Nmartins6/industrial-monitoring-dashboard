@@ -11,9 +11,13 @@ import {
   serializeMetricHistory,
 } from '@industrial-monitoring/contracts';
 
+import {
+  acknowledgeMachineAlert,
+  getMachineAlertHistory,
+} from './machines/alert-history.js';
+
 import { getMachineStatusSnapshot } from './machines/machine-status.js';
 import { getMachineMetricHistory } from './machines/metric-history.js';
-import { getMachineAlertHistory } from './machines/alert-history.js';
 
 interface HealthResponse {
   status: 'ok';
@@ -22,6 +26,11 @@ interface HealthResponse {
 
 interface ErrorResponse {
   error: string;
+}
+
+interface AlertAcknowledgementPathParameters {
+  machineId: string;
+  alertId: string;
 }
 
 function sendJson(
@@ -60,6 +69,27 @@ function getMachineIdFromAlertHistoryPath(
   return match?.[1];
 }
 
+function getAlertAcknowledgementPathParameters(
+  pathname: string,
+): AlertAcknowledgementPathParameters | undefined {
+  const match =
+    /^\/api\/v1\/machines\/([^/]+)\/alerts\/([^/]+)\/acknowledge$/.exec(
+      pathname,
+    );
+
+  const machineId = match?.[1];
+  const alertId = match?.[2];
+
+  if (machineId === undefined || alertId === undefined) {
+    return undefined;
+  }
+
+  return {
+    machineId,
+    alertId,
+  };
+}
+
 export function handleRequest(
   request: IncomingMessage,
   response: ServerResponse,
@@ -73,6 +103,50 @@ export function handleRequest(
     };
 
     sendJson(response, 200, healthResponse);
+    return;
+  }
+
+  const alertAcknowledgementParameters = getAlertAcknowledgementPathParameters(
+    requestUrl.pathname,
+  );
+
+  if (alertAcknowledgementParameters !== undefined) {
+    if (request.method !== 'PATCH') {
+      response.setHeader('allow', 'PATCH');
+
+      const errorResponse: ErrorResponse = {
+        error: 'Method not allowed',
+      };
+
+      sendJson(response, 405, errorResponse);
+      return;
+    }
+
+    const result = acknowledgeMachineAlert(
+      alertAcknowledgementParameters.machineId,
+      alertAcknowledgementParameters.alertId,
+    );
+
+    if (result.status === 'MACHINE_NOT_FOUND') {
+      const errorResponse: ErrorResponse = {
+        error: 'Machine not found',
+      };
+
+      sendJson(response, 404, errorResponse);
+      return;
+    }
+
+    if (result.status === 'ALERT_NOT_FOUND') {
+      const errorResponse: ErrorResponse = {
+        error: 'Alert not found',
+      };
+
+      sendJson(response, 404, errorResponse);
+      return;
+    }
+
+    sendJson(response, 200, serializeAlert(result.alert));
+
     return;
   }
 
