@@ -11,10 +11,7 @@ import {
   serializeMetricHistory,
 } from '@industrial-monitoring/contracts';
 
-import {
-  acknowledgeMachineAlert,
-  getMachineAlertHistory,
-} from './machines/alert-history.js';
+import { createAlertStore, type AlertStore } from './machines/alert-history.js';
 
 import { getMachineStatusSnapshot } from './machines/machine-status.js';
 import { getMachineMetricHistory } from './machines/metric-history.js';
@@ -93,6 +90,7 @@ function getAlertAcknowledgementPathParameters(
 export function handleRequest(
   request: IncomingMessage,
   response: ServerResponse,
+  alertStore: AlertStore,
 ): void {
   const requestUrl = new URL(request.url ?? '/', 'http://localhost');
 
@@ -122,11 +120,10 @@ export function handleRequest(
       return;
     }
 
-    const result = acknowledgeMachineAlert(
+    const result = alertStore.acknowledgeMachineAlert(
       alertAcknowledgementParameters.machineId,
       alertAcknowledgementParameters.alertId,
     );
-
     if (result.status === 'MACHINE_NOT_FOUND') {
       const errorResponse: ErrorResponse = {
         error: 'Machine not found',
@@ -166,7 +163,9 @@ export function handleRequest(
       return;
     }
 
-    const alertHistory = getMachineAlertHistory(alertHistoryMachineId);
+    const alertHistory = alertStore.getMachineAlertHistory(
+      alertHistoryMachineId,
+    );
 
     if (alertHistory === undefined) {
       const errorResponse: ErrorResponse = {
@@ -251,5 +250,9 @@ export function handleRequest(
 }
 
 export function createHttpServer(): Server {
-  return createServer(handleRequest);
+  const alertStore = createAlertStore();
+
+  return createServer((request, response) => {
+    handleRequest(request, response, alertStore);
+  });
 }
