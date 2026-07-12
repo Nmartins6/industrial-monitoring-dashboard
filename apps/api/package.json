@@ -10,12 +10,18 @@
   "devDependencies": {
     "@industrial-monitoring/eslint-config": "workspace:*",
     "@industrial-monitoring/typescript-config": "workspace:*",
-    "@types/node": "^26.1.1"
+    "@jest/globals": "30.4.1",
+    "@types/node": "^26.1.1",
+    "jest": "30.4.2"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.json",
     "lint": "eslint .",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "test:compile": "node -e \"require('node:fs').rmSync('.test-dist',{recursive:true,force:true})\" && tsc -p tsconfig.test.json",
+    "test:run": "NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.js --runInBand",
+    "test": "pnpm test:compile && pnpm test:run",
+    "test:coverage": "pnpm test:compile && NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.js --coverage --runInBand"
   }
 }

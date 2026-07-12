@@ -1,6 +1,4 @@
-import { createServer } from 'node:http';
-
-import { handleRequest } from './app.js';
+import { createHttpServer } from './app.js';
 
 const DEFAULT_PORT = 3333;
 const MIN_PORT = 1;
@@ -25,7 +23,7 @@ function resolvePort(value: string | undefined): number {
 }
 
 const port = resolvePort(process.env.PORT);
-const server = createServer(handleRequest);
+const server = createHttpServer();
 
 server.listen(port, '0.0.0.0', () => {
   console.log(`API listening on http://localhost:${port}`);

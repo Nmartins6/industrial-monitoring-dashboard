@@ -1,0 +1,12 @@
+{
+  "extends": "@industrial-monitoring/typescript-config/node",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": ".test-dist",
+    "types": ["node"],
+    "noEmit": false,
+    "sourceMap": true
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts"],
+  "exclude": [".test-dist", "dist", "node_modules"]
+}

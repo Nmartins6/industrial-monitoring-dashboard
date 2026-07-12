@@ -15,3 +15,5 @@ blob-report/
 *.sqlite3
 
 pnpm-lock.yaml
+
+.test-dist/

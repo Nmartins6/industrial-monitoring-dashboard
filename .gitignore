@@ -45,3 +45,6 @@ database/data/*
 playwright-report/
 test-results/
 blob-report/
+
+# Compiled test files
+.test-dist/

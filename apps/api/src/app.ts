@@ -1,4 +1,9 @@
-import { type IncomingMessage, type ServerResponse } from 'node:http';
+import {
+  createServer,
+  type IncomingMessage,
+  type Server,
+  type ServerResponse,
+} from 'node:http';
 
 interface HealthResponse {
   status: 'ok';
@@ -37,4 +42,8 @@ export function handleRequest(
   sendJson(response, 404, {
     error: 'Route not found',
   });
+}
+
+export function createHttpServer(): Server {
+  return createServer(handleRequest);
 }
