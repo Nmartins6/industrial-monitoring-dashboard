@@ -9,3 +9,13 @@ export {
 } from './machine-status.js';
 
 export type { MetricHistory } from './metric-history.js';
+
+export {
+  serializeAlert,
+  serializeMachineStatus,
+  serializeMetricHistory,
+  type AlertTransport,
+  type ISODateString,
+  type MachineStatusTransport,
+  type MetricHistoryTransport,
+} from './transport.js';
