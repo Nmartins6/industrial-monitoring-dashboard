@@ -1,46 +1,51 @@
-import { createHttpServer } from './app.js';
+import { mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
 
-const DEFAULT_PORT = 3333;
-const MIN_PORT = 1;
-const MAX_PORT = 65_535;
+import { createRuntimeHttpServer } from './runtime.js';
+import { resolveRuntimeConfiguration } from './runtime-configuration.js';
 
-function resolvePort(value: string | undefined): number {
-  if (value === undefined) {
-    return DEFAULT_PORT;
-  }
+const configuration = resolveRuntimeConfiguration(process.env, process.cwd());
 
-  const parsedPort = Number(value);
-
-  if (
-    !Number.isInteger(parsedPort) ||
-    parsedPort < MIN_PORT ||
-    parsedPort > MAX_PORT
-  ) {
-    return DEFAULT_PORT;
-  }
-
-  return parsedPort;
-}
-
-const port = resolvePort(process.env.PORT);
-const server = createHttpServer();
-
-server.listen(port, '0.0.0.0', () => {
-  console.log(`API listening on http://localhost:${port}`);
-});
-
-function shutdown(signal: NodeJS.Signals): void {
-  console.log(`Received ${signal}. Closing HTTP server.`);
-
-  server.close(() => {
-    console.log('HTTP server closed.');
+if (configuration.databasePath !== ':memory:') {
+  mkdirSync(dirname(configuration.databasePath), {
+    recursive: true,
   });
 }
 
+const runtime = createRuntimeHttpServer({
+  databasePath: configuration.databasePath,
+});
+
+let isShuttingDown = false;
+
+async function shutdown(signal: string): Promise<void> {
+  if (isShuttingDown) {
+    return;
+  }
+
+  isShuttingDown = true;
+
+  console.log(`Received ${signal}. Shutting down...`);
+
+  try {
+    await runtime.close();
+    console.log('HTTP server and SQLite database closed.');
+  } catch (error) {
+    console.error('Failed to shut down cleanly.', error);
+    process.exitCode = 1;
+  }
+}
+
+runtime.server.listen(configuration.port, '0.0.0.0', () => {
+  console.log(`API running at http://0.0.0.0:${configuration.port}`);
+
+  console.log(`SQLite database: ${configuration.databasePath}`);
+});
+
 process.once('SIGINT', () => {
-  shutdown('SIGINT');
+  void shutdown('SIGINT');
 });
 
 process.once('SIGTERM', () => {
-  shutdown('SIGTERM');
+  void shutdown('SIGTERM');
 });
