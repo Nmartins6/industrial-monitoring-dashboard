@@ -11,7 +11,8 @@ import {
   serializeMetricHistory,
 } from '@industrial-monitoring/contracts';
 
-import { createAlertStore, type AlertStore } from './machines/alert-history.js';
+import type { AlertRepository } from './machines/alert-repository.js';
+import { createInMemoryAlertRepository } from './machines/in-memory-alert-repository.js';
 
 import { getMachineStatusSnapshot } from './machines/machine-status.js';
 import { getMachineMetricHistory } from './machines/metric-history.js';
@@ -28,6 +29,10 @@ interface ErrorResponse {
 interface AlertAcknowledgementPathParameters {
   machineId: string;
   alertId: string;
+}
+
+export interface CreateHttpServerOptions {
+  alertRepository?: AlertRepository;
 }
 
 function sendJson(
@@ -90,7 +95,7 @@ function getAlertAcknowledgementPathParameters(
 export function handleRequest(
   request: IncomingMessage,
   response: ServerResponse,
-  alertStore: AlertStore,
+  alertRepository: AlertRepository,
 ): void {
   const requestUrl = new URL(request.url ?? '/', 'http://localhost');
 
@@ -120,7 +125,7 @@ export function handleRequest(
       return;
     }
 
-    const result = alertStore.acknowledgeMachineAlert(
+    const result = alertRepository.acknowledgeMachineAlert(
       alertAcknowledgementParameters.machineId,
       alertAcknowledgementParameters.alertId,
     );
@@ -163,7 +168,7 @@ export function handleRequest(
       return;
     }
 
-    const alertHistory = alertStore.getMachineAlertHistory(
+    const alertHistory = alertRepository.getMachineAlertHistory(
       alertHistoryMachineId,
     );
 
@@ -249,10 +254,13 @@ export function handleRequest(
   sendJson(response, 404, errorResponse);
 }
 
-export function createHttpServer(): Server {
-  const alertStore = createAlertStore();
+export function createHttpServer(
+  options: CreateHttpServerOptions = {},
+): Server {
+  const alertRepository =
+    options.alertRepository ?? createInMemoryAlertRepository();
 
   return createServer((request, response) => {
-    handleRequest(request, response, alertStore);
+    handleRequest(request, response, alertRepository);
   });
 }
