@@ -11,10 +11,17 @@ import { openSseConnection, writeSseEvent } from './realtime/sse.js';
 
 import {
   createConnectedEvent,
+  createMachineStatusUpdatedEvent,
+  createMetricRecordedEvent,
   serializeAlert,
   serializeMachineStatus,
   serializeMetricHistory,
 } from '@industrial-monitoring/contracts';
+
+import {
+  systemRealtimeScheduler,
+  type RealtimeScheduler,
+} from './realtime/realtime-scheduler.js';
 
 import type { AlertRepository } from './machines/alert-repository.js';
 import { createInMemoryAlertRepository } from './machines/in-memory-alert-repository.js';
@@ -37,6 +44,7 @@ interface AlertAcknowledgementPathParameters {
 
 export interface CreateHttpServerOptions {
   alertRepository?: AlertRepository;
+  realtimeScheduler?: RealtimeScheduler;
 }
 
 function sendJson(
@@ -106,6 +114,7 @@ export function handleRequest(
   request: IncomingMessage,
   response: ServerResponse,
   alertRepository: AlertRepository,
+  realtimeScheduler: RealtimeScheduler,
 ): void {
   const requestUrl = new URL(request.url ?? '/', 'http://localhost');
 
@@ -153,6 +162,48 @@ export function handleRequest(
 
     openSseConnection(response);
     writeSseEvent(response, connectedEvent);
+
+    const scheduledTask = realtimeScheduler.scheduleEvery(3_000, () => {
+      if (response.destroyed || response.writableEnded) {
+        return;
+      }
+
+      const currentMachineStatus = getMachineStatusSnapshot(eventsMachineId);
+
+      if (currentMachineStatus === undefined) {
+        return;
+      }
+
+      const updateEmittedAt = new Date().toISOString();
+
+      const serializedMachineStatus =
+        serializeMachineStatus(currentMachineStatus);
+
+      const machineStatusUpdatedEvent = createMachineStatusUpdatedEvent({
+        id: randomUUID(),
+        emittedAt: updateEmittedAt,
+        payload: serializedMachineStatus,
+      });
+
+      const metricRecordedEvent = createMetricRecordedEvent({
+        id: randomUUID(),
+        emittedAt: updateEmittedAt,
+        payload: {
+          timestamp: serializedMachineStatus.timestamp,
+          temperature: serializedMachineStatus.metrics.temperature,
+          rpm: serializedMachineStatus.metrics.rpm,
+          efficiency: serializedMachineStatus.metrics.efficiency,
+        },
+      });
+
+      writeSseEvent(response, machineStatusUpdatedEvent);
+
+      writeSseEvent(response, metricRecordedEvent);
+    });
+
+    response.once('close', () => {
+      scheduledTask.cancel();
+    });
 
     return;
   }
@@ -308,7 +359,10 @@ export function createHttpServer(
   const alertRepository =
     options.alertRepository ?? createInMemoryAlertRepository();
 
+  const realtimeScheduler =
+    options.realtimeScheduler ?? systemRealtimeScheduler;
+
   return createServer((request, response) => {
-    handleRequest(request, response, alertRepository);
+    handleRequest(request, response, alertRepository, realtimeScheduler);
   });
 }
