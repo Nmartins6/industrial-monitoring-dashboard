@@ -1,3 +1,8 @@
+import {
+  createMachineOeeCalculator,
+  type MachineOeeCalculator,
+} from './machine-oee-calculator.js';
+
 import type { MachineStatus } from '@industrial-monitoring/contracts';
 
 export interface TelemetryRandomSource {
@@ -10,6 +15,7 @@ export interface MachineTelemetrySimulator {
 
 export interface CreateMachineTelemetrySimulatorOptions {
   randomSource?: TelemetryRandomSource;
+  oeeCalculator?: MachineOeeCalculator;
 }
 
 const systemTelemetryRandomSource: TelemetryRandomSource = {
@@ -59,6 +65,8 @@ export function createMachineTelemetrySimulator(
 ): MachineTelemetrySimulator {
   const randomSource = options.randomSource ?? systemTelemetryRandomSource;
 
+  const oeeCalculator = options.oeeCalculator ?? createMachineOeeCalculator();
+
   return {
     next(previousStatus: MachineStatus, timestamp: Date): MachineStatus {
       const temperatureVariation = calculateVariation(
@@ -75,42 +83,81 @@ export function createMachineTelemetrySimulator(
         2,
       );
 
+      const availabilityVariation = calculateVariation(
+        randomSource.next(),
+        -0.5,
+        0.5,
+      );
+
+      const qualityVariation = calculateVariation(
+        randomSource.next(),
+        -0.2,
+        0.2,
+      );
+
       const elapsedSeconds = calculateElapsedSeconds(
         previousStatus.timestamp,
         timestamp,
       );
+
+      const isNonProductiveState =
+        previousStatus.state === 'STOPPED' ||
+        previousStatus.state === 'MAINTENANCE' ||
+        previousStatus.state === 'ERROR';
+
+      const nextTemperature = roundToOneDecimal(
+        clamp(
+          previousStatus.metrics.temperature + temperatureVariation,
+          0,
+          Number.MAX_SAFE_INTEGER,
+        ),
+      );
+
+      const simulatedRpm = Math.round(
+        clamp(
+          previousStatus.metrics.rpm + rpmVariation,
+          0,
+          Number.MAX_SAFE_INTEGER,
+        ),
+      );
+
+      const nextRpm = isNonProductiveState ? 0 : simulatedRpm;
+
+      const nextUptime = isNonProductiveState
+        ? previousStatus.metrics.uptime
+        : previousStatus.metrics.uptime + elapsedSeconds;
+
+      const simulatedEfficiency = roundToOneDecimal(
+        clamp(previousStatus.metrics.efficiency + efficiencyVariation, 0, 100),
+      );
+
+      const nextEfficiency = isNonProductiveState ? 0 : simulatedEfficiency;
+
+      const nextAvailability = roundToOneDecimal(
+        clamp(previousStatus.oee.availability + availabilityVariation, 0, 100),
+      );
+
+      const nextQuality = roundToOneDecimal(
+        clamp(previousStatus.oee.quality + qualityVariation, 0, 100),
+      );
+
+      const nextOee = oeeCalculator.calculate({
+        availability: nextAvailability,
+        performance: nextEfficiency,
+        quality: nextQuality,
+      });
 
       return {
         id: previousStatus.id,
         timestamp: new Date(timestamp.getTime()),
         state: previousStatus.state,
         metrics: {
-          temperature: roundToOneDecimal(
-            clamp(
-              previousStatus.metrics.temperature + temperatureVariation,
-              0,
-              Number.MAX_SAFE_INTEGER,
-            ),
-          ),
-          rpm: Math.round(
-            clamp(
-              previousStatus.metrics.rpm + rpmVariation,
-              0,
-              Number.MAX_SAFE_INTEGER,
-            ),
-          ),
-          uptime: previousStatus.metrics.uptime + elapsedSeconds,
-          efficiency: roundToOneDecimal(
-            clamp(
-              previousStatus.metrics.efficiency + efficiencyVariation,
-              0,
-              100,
-            ),
-          ),
+          temperature: nextTemperature,
+          rpm: nextRpm,
+          uptime: nextUptime,
+          efficiency: nextEfficiency,
         },
-        oee: {
-          ...previousStatus.oee,
-        },
+        oee: nextOee,
       };
     },
   };

@@ -45,7 +45,9 @@ describe('Machine telemetry simulator', () => {
       },
     };
 
-    const randomSource = new SequenceTelemetryRandomSource([0.75, 0.25, 0.6]);
+    const randomSource = new SequenceTelemetryRandomSource([
+      0.75, 0.25, 0.6, 0.5, 0.5,
+    ]);
 
     const simulator = createMachineTelemetrySimulator({
       randomSource,
@@ -67,9 +69,9 @@ describe('Machine telemetry simulator', () => {
         efficiency: 92.4,
       },
       oee: {
-        overall: 88.4,
+        overall: 86.9,
         availability: 96,
-        performance: 94,
+        performance: 92.4,
         quality: 98,
       },
     });
@@ -104,7 +106,7 @@ describe('Machine telemetry simulator', () => {
       },
     };
 
-    const randomSource = new SequenceTelemetryRandomSource([0, 0, 1]);
+    const randomSource = new SequenceTelemetryRandomSource([0, 0, 1, 0.5, 0.5]);
 
     const simulator = createMachineTelemetrySimulator({
       randomSource,
@@ -142,7 +144,9 @@ describe('Machine telemetry simulator', () => {
       },
     };
 
-    const randomSource = new SequenceTelemetryRandomSource([0.5, 0.5, 0]);
+    const randomSource = new SequenceTelemetryRandomSource([
+      0.5, 0.5, 0, 0.5, 0.5,
+    ]);
 
     const simulator = createMachineTelemetrySimulator({
       randomSource,
@@ -186,6 +190,8 @@ describe('Machine telemetry simulator', () => {
         invalidRandomValue,
         0.5,
         0.5,
+        0.5,
+        0.5,
       ]);
 
       const simulator = createMachineTelemetrySimulator({
@@ -221,6 +227,8 @@ describe('Machine telemetry simulator', () => {
       Number.NaN,
       0.5,
       0.5,
+      0.5,
+      0.5,
     ]);
 
     const simulator = createMachineTelemetrySimulator({
@@ -230,5 +238,240 @@ describe('Machine telemetry simulator', () => {
     expect(() => {
       simulator.next(previousStatus, new Date('2026-07-12T15:00:03.000Z'));
     }).toThrow('Telemetry random value must be between 0 and 1');
+  });
+
+  it('recalculates OEE from the simulated machine efficiency', () => {
+    const previousStatus: MachineStatus = {
+      id: 'mixer-01',
+      timestamp: new Date('2026-07-12T15:00:00.000Z'),
+      state: 'RUNNING',
+      metrics: {
+        temperature: 72,
+        rpm: 1200,
+        uptime: 28_800,
+        efficiency: 92,
+      },
+      oee: {
+        overall: 88.4,
+        availability: 96,
+        performance: 94,
+        quality: 98,
+      },
+    };
+
+    const randomSource = new SequenceTelemetryRandomSource([
+      0.5, 0.5, 0.6, 0.5, 0.5,
+    ]);
+
+    const simulator = createMachineTelemetrySimulator({
+      randomSource,
+    });
+
+    const nextStatus = simulator.next(
+      previousStatus,
+      new Date('2026-07-12T15:00:03.000Z'),
+    );
+
+    expect(nextStatus.metrics.efficiency).toBe(92.4);
+
+    expect(nextStatus.oee).toEqual({
+      overall: 86.9,
+      availability: 96,
+      performance: 92.4,
+      quality: 98,
+    });
+  });
+
+  it('evolves availability and quality before recalculating OEE', () => {
+    const previousStatus: MachineStatus = {
+      id: 'mixer-01',
+      timestamp: new Date('2026-07-12T15:00:00.000Z'),
+      state: 'RUNNING',
+      metrics: {
+        temperature: 72,
+        rpm: 1200,
+        uptime: 28_800,
+        efficiency: 92,
+      },
+      oee: {
+        overall: 88.4,
+        availability: 96,
+        performance: 94,
+        quality: 98,
+      },
+    };
+
+    const randomSource = new SequenceTelemetryRandomSource([
+      0.5, 0.5, 0.5, 1, 0,
+    ]);
+
+    const simulator = createMachineTelemetrySimulator({
+      randomSource,
+    });
+
+    const nextStatus = simulator.next(
+      previousStatus,
+      new Date('2026-07-12T15:00:03.000Z'),
+    );
+
+    expect(nextStatus.metrics.efficiency).toBe(92);
+
+    expect(nextStatus.oee).toEqual({
+      overall: 86.8,
+      availability: 96.5,
+      performance: 92,
+      quality: 97.8,
+    });
+  });
+
+  it('does not generate operating telemetry while the machine is stopped', () => {
+    const previousStatus: MachineStatus = {
+      id: 'mixer-01',
+      timestamp: new Date('2026-07-12T15:00:00.000Z'),
+      state: 'STOPPED',
+      metrics: {
+        temperature: 60,
+        rpm: 0,
+        uptime: 28_800,
+        efficiency: 0,
+      },
+      oee: {
+        overall: 0,
+        availability: 95,
+        performance: 0,
+        quality: 98,
+      },
+    };
+
+    const randomSource = new SequenceTelemetryRandomSource([0.5, 1, 1, 0, 0.5]);
+
+    const simulator = createMachineTelemetrySimulator({
+      randomSource,
+    });
+
+    const nextStatus = simulator.next(
+      previousStatus,
+      new Date('2026-07-12T15:00:03.000Z'),
+    );
+
+    expect(nextStatus).toEqual({
+      id: 'mixer-01',
+      timestamp: new Date('2026-07-12T15:00:03.000Z'),
+      state: 'STOPPED',
+      metrics: {
+        temperature: 60,
+        rpm: 0,
+        uptime: 28_800,
+        efficiency: 0,
+      },
+      oee: {
+        overall: 0,
+        availability: 94.5,
+        performance: 0,
+        quality: 98,
+      },
+    });
+  });
+
+  it('does not generate operating telemetry while the machine is under maintenance', () => {
+    const previousStatus: MachineStatus = {
+      id: 'mixer-01',
+      timestamp: new Date('2026-07-12T15:00:00.000Z'),
+      state: 'MAINTENANCE',
+      metrics: {
+        temperature: 55,
+        rpm: 0,
+        uptime: 28_800,
+        efficiency: 0,
+      },
+      oee: {
+        overall: 0,
+        availability: 90,
+        performance: 0,
+        quality: 98,
+      },
+    };
+
+    const randomSource = new SequenceTelemetryRandomSource([
+      0.75, 1, 1, 0, 0.5,
+    ]);
+
+    const simulator = createMachineTelemetrySimulator({
+      randomSource,
+    });
+
+    const nextStatus = simulator.next(
+      previousStatus,
+      new Date('2026-07-12T15:00:03.000Z'),
+    );
+
+    expect(nextStatus).toEqual({
+      id: 'mixer-01',
+      timestamp: new Date('2026-07-12T15:00:03.000Z'),
+      state: 'MAINTENANCE',
+      metrics: {
+        temperature: 56,
+        rpm: 0,
+        uptime: 28_800,
+        efficiency: 0,
+      },
+      oee: {
+        overall: 0,
+        availability: 89.5,
+        performance: 0,
+        quality: 98,
+      },
+    });
+  });
+
+  it('does not generate operating telemetry while the machine is in error', () => {
+    const previousStatus: MachineStatus = {
+      id: 'mixer-01',
+      timestamp: new Date('2026-07-12T15:00:00.000Z'),
+      state: 'ERROR',
+      metrics: {
+        temperature: 90,
+        rpm: 0,
+        uptime: 28_800,
+        efficiency: 0,
+      },
+      oee: {
+        overall: 0,
+        availability: 85,
+        performance: 0,
+        quality: 98,
+      },
+    };
+
+    const randomSource = new SequenceTelemetryRandomSource([
+      0.25, 1, 1, 0, 0.5,
+    ]);
+
+    const simulator = createMachineTelemetrySimulator({
+      randomSource,
+    });
+
+    const nextStatus = simulator.next(
+      previousStatus,
+      new Date('2026-07-12T15:00:03.000Z'),
+    );
+
+    expect(nextStatus).toEqual({
+      id: 'mixer-01',
+      timestamp: new Date('2026-07-12T15:00:03.000Z'),
+      state: 'ERROR',
+      metrics: {
+        temperature: 89,
+        rpm: 0,
+        uptime: 28_800,
+        efficiency: 0,
+      },
+      oee: {
+        overall: 0,
+        availability: 84.5,
+        performance: 0,
+        quality: 98,
+      },
+    });
   });
 });
