@@ -2,6 +2,7 @@ import type { Alert } from '@industrial-monitoring/contracts';
 
 import type {
   AcknowledgeMachineAlertResult,
+  AddMachineAlertResult,
   AlertRepository,
 } from './alert-repository.js';
 
@@ -61,8 +62,37 @@ function mapStoredAlertToDomain(storedAlert: StoredAlert): Alert {
   };
 }
 
+function mapDomainAlertToStored(alert: Alert): StoredAlert {
+  return {
+    ...alert,
+    timestamp: alert.timestamp.toISOString(),
+  };
+}
+
 export function createInMemoryAlertRepository(): AlertRepository {
   const alertHistoryByMachineId = createInitialAlertHistory();
+
+  function addMachineAlert(
+    machineId: string,
+    alert: Alert,
+  ): AddMachineAlertResult {
+    const storedAlerts = alertHistoryByMachineId[machineId];
+
+    if (storedAlerts === undefined) {
+      return {
+        status: 'MACHINE_NOT_FOUND',
+      };
+    }
+
+    const storedAlert = mapDomainAlertToStored(alert);
+
+    storedAlerts.unshift(storedAlert);
+
+    return {
+      status: 'CREATED',
+      alert: mapStoredAlertToDomain(storedAlert),
+    };
+  }
 
   function getMachineAlertHistory(machineId: string): Alert[] | undefined {
     const storedAlerts = alertHistoryByMachineId[machineId];
@@ -108,6 +138,7 @@ export function createInMemoryAlertRepository(): AlertRepository {
   }
 
   return {
+    addMachineAlert,
     acknowledgeMachineAlert,
     getMachineAlertHistory,
   };

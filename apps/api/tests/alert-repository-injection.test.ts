@@ -8,8 +8,10 @@ import type { Alert, AlertTransport } from '@industrial-monitoring/contracts';
 import { createHttpServer } from '../src/app.js';
 import type {
   AcknowledgeMachineAlertResult,
+  AddMachineAlertResult,
   AlertRepository,
 } from '../src/machines/alert-repository.js';
+import { createInMemoryAlertRepository } from '../src/machines/in-memory-alert-repository.js';
 
 interface TestServer {
   server: Server;
@@ -64,6 +66,15 @@ describe('Alert repository injection', () => {
     };
 
     const alertRepository: AlertRepository = {
+      addMachineAlert(machineId: string, alert: Alert): AddMachineAlertResult {
+        void machineId;
+
+        return {
+          status: 'CREATED',
+          alert,
+        };
+      },
+
       getMachineAlertHistory(machineId: string): Alert[] | undefined {
         if (machineId !== 'custom-machine') {
           return undefined;
@@ -103,5 +114,28 @@ describe('Alert repository injection', () => {
     } finally {
       await closeTestServer(testServer.server);
     }
+  });
+
+  it('returns machine not found when adding an alert to an unknown machine', () => {
+    const repository = createInMemoryAlertRepository();
+
+    const alert: Alert = {
+      id: 'automatic-alert-unknown-machine',
+      timestamp: new Date('2026-07-12T15:00:03.000Z'),
+      level: 'WARNING',
+      component: 'Temperature Sensor',
+      message: 'Machine temperature reached the warning threshold',
+      acknowledged: false,
+    };
+
+    const result = repository.addMachineAlert('unknown-machine', alert);
+
+    expect(result).toEqual({
+      status: 'MACHINE_NOT_FOUND',
+    });
+
+    expect(
+      repository.getMachineAlertHistory('unknown-machine'),
+    ).toBeUndefined();
   });
 });

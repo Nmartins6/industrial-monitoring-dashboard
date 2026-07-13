@@ -1,5 +1,14 @@
 import type { Alert } from '@industrial-monitoring/contracts';
 
+export type AddMachineAlertResult =
+  | {
+      status: 'CREATED';
+      alert: Alert;
+    }
+  | {
+      status: 'MACHINE_NOT_FOUND';
+    };
+
 export type AcknowledgeMachineAlertResult =
   | {
       status: 'ACKNOWLEDGED';
@@ -13,6 +22,8 @@ export type AcknowledgeMachineAlertResult =
     };
 
 export interface AlertRepository {
+  addMachineAlert(machineId: string, alert: Alert): AddMachineAlertResult;
+
   acknowledgeMachineAlert(
     machineId: string,
     alertId: string,

@@ -4,6 +4,7 @@ import type { Alert } from '@industrial-monitoring/contracts';
 
 import type {
   AcknowledgeMachineAlertResult,
+  AddMachineAlertResult,
   AlertRepository,
 } from './alert-repository.js';
 
@@ -194,6 +195,19 @@ export function createSqliteAlertRepository(
     LIMIT 1
   `);
 
+  const insertMachineAlertStatement = database.prepare(`
+    INSERT INTO alerts (
+      id,
+      machine_id,
+      level,
+      message,
+      component,
+      timestamp,
+      acknowledged
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+
   function getMachineAlertHistory(machineId: string): Alert[] | undefined {
     const machine = findMachine.get(machineId);
 
@@ -204,6 +218,37 @@ export function createSqliteAlertRepository(
     const rows = findAlertHistory.all(machineId) as unknown as AlertRow[];
 
     return rows.map(mapAlertRowToDomain);
+  }
+
+  function addMachineAlert(
+    machineId: string,
+    alert: Alert,
+  ): AddMachineAlertResult {
+    const machine = findMachine.get(machineId);
+
+    if (machine === undefined) {
+      return {
+        status: 'MACHINE_NOT_FOUND',
+      };
+    }
+
+    insertMachineAlertStatement.run(
+      alert.id,
+      machineId,
+      alert.level,
+      alert.message,
+      alert.component,
+      alert.timestamp.toISOString(),
+      alert.acknowledged ? 1 : 0,
+    );
+
+    return {
+      status: 'CREATED',
+      alert: {
+        ...alert,
+        timestamp: new Date(alert.timestamp.getTime()),
+      },
+    };
   }
 
   function acknowledgeMachineAlert(
@@ -246,6 +291,7 @@ export function createSqliteAlertRepository(
   }
 
   return {
+    addMachineAlert,
     acknowledgeMachineAlert,
     close,
     getMachineAlertHistory,
