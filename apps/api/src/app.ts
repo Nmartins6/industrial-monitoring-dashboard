@@ -10,6 +10,7 @@ import { randomUUID } from 'node:crypto';
 import { openSseConnection, writeSseEvent } from './realtime/sse.js';
 
 import {
+  createAlertCreatedEvent,
   createConnectedEvent,
   createMachineStatusUpdatedEvent,
   createMetricRecordedEvent,
@@ -33,10 +34,13 @@ import {
   type MachineConditionEvaluator,
 } from './machines/machine-condition-evaluator.js';
 
-import type { AlertRepository } from './machines/alert-repository.js';
+import { createMachineAlertFromCondition } from './machines/machine-condition-alert-factory.js';
 import { createInMemoryAlertRepository } from './machines/in-memory-alert-repository.js';
 import { getMachineStatusSnapshot } from './machines/machine-status.js';
 import { getMachineMetricHistory } from './machines/metric-history.js';
+import { createMachineConditionTransitionTracker } from './machines/machine-condition-transition-tracker.js';
+
+import type { AlertRepository } from './machines/alert-repository.js';
 
 interface HealthResponse {
   status: 'ok';
@@ -169,6 +173,9 @@ export function handleRequest(
 
     let currentMachineStatus = machineStatus;
 
+    const conditionTransitionTracker =
+      createMachineConditionTransitionTracker();
+
     const emittedAt = new Date().toISOString();
 
     const connectedEvent = createConnectedEvent({
@@ -197,6 +204,10 @@ export function handleRequest(
 
       currentMachineStatus = conditionEvaluation.machineStatus;
 
+      const newlyActiveConditions = conditionTransitionTracker.track(
+        conditionEvaluation.conditions,
+      );
+
       const updateEmittedAt = updateTimestamp.toISOString();
 
       const serializedMachineStatus =
@@ -219,9 +230,39 @@ export function handleRequest(
         },
       });
 
+      const alertCreatedEvents = newlyActiveConditions.flatMap((condition) => {
+        const alert = createMachineAlertFromCondition({
+          id: randomUUID(),
+          timestamp: updateTimestamp,
+          component: 'temperature-sensor',
+          condition,
+        });
+
+        const creationResult = alertRepository.addMachineAlert(
+          eventsMachineId,
+          alert,
+        );
+
+        if (creationResult.status !== 'CREATED') {
+          return [];
+        }
+
+        return [
+          createAlertCreatedEvent({
+            id: randomUUID(),
+            emittedAt: updateEmittedAt,
+            payload: serializeAlert(creationResult.alert),
+          }),
+        ];
+      });
+
       writeSseEvent(response, machineStatusUpdatedEvent);
 
       writeSseEvent(response, metricRecordedEvent);
+
+      for (const alertCreatedEvent of alertCreatedEvents) {
+        writeSseEvent(response, alertCreatedEvent);
+      }
     });
 
     response.once('close', () => {
