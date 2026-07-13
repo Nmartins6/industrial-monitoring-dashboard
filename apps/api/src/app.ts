@@ -28,6 +28,11 @@ import {
   type MachineTelemetrySimulator,
 } from './machines/machine-telemetry-simulator.js';
 
+import {
+  createMachineConditionEvaluator,
+  type MachineConditionEvaluator,
+} from './machines/machine-condition-evaluator.js';
+
 import type { AlertRepository } from './machines/alert-repository.js';
 import { createInMemoryAlertRepository } from './machines/in-memory-alert-repository.js';
 import { getMachineStatusSnapshot } from './machines/machine-status.js';
@@ -51,6 +56,7 @@ export interface CreateHttpServerOptions {
   alertRepository?: AlertRepository;
   realtimeScheduler?: RealtimeScheduler;
   machineTelemetrySimulator?: MachineTelemetrySimulator;
+  machineConditionEvaluator?: MachineConditionEvaluator;
 }
 
 function sendJson(
@@ -122,6 +128,7 @@ export function handleRequest(
   alertRepository: AlertRepository,
   realtimeScheduler: RealtimeScheduler,
   machineTelemetrySimulator: MachineTelemetrySimulator,
+  machineConditionEvaluator: MachineConditionEvaluator,
 ): void {
   const requestUrl = new URL(request.url ?? '/', 'http://localhost');
 
@@ -179,10 +186,16 @@ export function handleRequest(
 
       const updateTimestamp = new Date();
 
-      currentMachineStatus = machineTelemetrySimulator.next(
+      const simulatedMachineStatus = machineTelemetrySimulator.next(
         currentMachineStatus,
         updateTimestamp,
       );
+
+      const conditionEvaluation = machineConditionEvaluator.evaluate(
+        simulatedMachineStatus,
+      );
+
+      currentMachineStatus = conditionEvaluation.machineStatus;
 
       const updateEmittedAt = updateTimestamp.toISOString();
 
@@ -375,6 +388,13 @@ export function createHttpServer(
   const machineTelemetrySimulator =
     options.machineTelemetrySimulator ?? createMachineTelemetrySimulator();
 
+  const machineConditionEvaluator =
+    options.machineConditionEvaluator ??
+    createMachineConditionEvaluator({
+      warningTemperature: 80,
+      criticalTemperature: 90,
+    });
+
   return createServer((request, response) => {
     handleRequest(
       request,
@@ -382,6 +402,7 @@ export function createHttpServer(
       alertRepository,
       realtimeScheduler,
       machineTelemetrySimulator,
+      machineConditionEvaluator,
     );
   });
 }
