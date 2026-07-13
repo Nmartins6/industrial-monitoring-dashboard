@@ -1,22 +1,50 @@
-import { describe, expect, it } from '@jest/globals';
+import { describe, expect, it, jest } from '@jest/globals';
 import { render, screen, within } from '@testing-library/react';
+import type { MachineStatusTransport } from '@industrial-monitoring/contracts';
 
-import Home from './page';
+import Home, { renderDashboardPage } from './page';
+import { MachineApiError } from '@/lib/api/machine-api-client';
+
+const DEFAULT_MACHINE_STATUS: MachineStatusTransport = {
+  id: 'mixer-01',
+  timestamp: '2026-07-13T00:00:00.000Z',
+  state: 'RUNNING',
+  metrics: {
+    temperature: 72,
+    rpm: 1200,
+    uptime: 28_800,
+    efficiency: 92,
+  },
+  oee: {
+    overall: 88.4,
+    availability: 96,
+    performance: 94,
+    quality: 98,
+  },
+};
+
+async function renderHome(): Promise<void> {
+  const page = await renderDashboardPage({
+    loadMachineStatus: async () => DEFAULT_MACHINE_STATUS,
+  });
+
+  render(page);
+}
 
 describe('Home page', () => {
-  it('presents the industrial monitoring dashboard', () => {
-    render(<Home />);
+  it('shows the dashboard heading', async () => {
+    await renderHome();
 
     expect(
       screen.getByRole('heading', {
         level: 1,
-        name: 'Industrial Monitoring Dashboard',
+        name: 'Painel de Monitoramento Industrial',
       }),
     ).toBeInTheDocument();
   });
 
-  it('shows the monitored machine and realtime connection status', () => {
-    render(<Home />);
+  it('shows the monitored machine and realtime connection status', async () => {
+    await renderHome();
 
     expect(screen.getByRole('banner')).toBeInTheDocument();
 
@@ -24,68 +52,68 @@ describe('Home page', () => {
 
     expect(
       screen.getByRole('status', {
-        name: 'Realtime connection status',
+        name: 'Status da conexão em tempo real',
       }),
-    ).toHaveTextContent('Connected');
+    ).toHaveTextContent('Conectado');
   });
 
-  it('shows the current machine operating status', () => {
-    render(<Home />);
+  it('shows the current machine operating status', async () => {
+    await renderHome();
 
     const machineStatusRegion = screen.getByRole('region', {
-      name: 'Machine status',
+      name: 'Status da máquina',
     });
 
     expect(
       within(machineStatusRegion).getByRole('heading', {
         level: 2,
-        name: 'Machine status',
+        name: 'Status da máquina',
       }),
     ).toBeInTheDocument();
 
     expect(
       within(machineStatusRegion).getByRole('status', {
-        name: 'Current machine state',
+        name: 'Estado atual da máquina',
       }),
-    ).toHaveTextContent('Running');
+    ).toHaveTextContent('Em operação');
 
     const lastUpdate = within(machineStatusRegion).getByLabelText(
-      'Last machine update',
+      'Última atualização da máquina',
     );
 
     expect(lastUpdate).toHaveAttribute('datetime');
-    expect(lastUpdate).toHaveTextContent('Updated just now');
+    expect(lastUpdate).toHaveTextContent('Atualizado agora');
   });
 
-  it('shows the current machine metrics', () => {
-    render(<Home />);
+  it('shows the current machine metrics', async () => {
+    await renderHome();
 
     const metricsRegion = screen.getByRole('region', {
-      name: 'Current metrics',
+      name: 'Métricas atuais',
     });
 
     expect(
       within(metricsRegion).getByRole('heading', {
         level: 2,
-        name: 'Current metrics',
+        name: 'Métricas atuais',
       }),
     ).toBeInTheDocument();
 
     const temperatureMetric = within(metricsRegion).getByRole('article', {
-      name: 'Temperature metric',
+      name: 'Métrica de temperatura',
     });
 
     expect(
       within(temperatureMetric).getByRole('heading', {
         level: 3,
-        name: 'Temperature',
+        name: 'Temperatura',
       }),
     ).toBeInTheDocument();
 
     expect(within(temperatureMetric).getByText('72 °C')).toBeInTheDocument();
 
     const rpmMetric = within(metricsRegion).getByRole('article', {
-      name: 'RPM metric',
+      name: 'Métrica de RPM',
     });
 
     expect(
@@ -95,72 +123,72 @@ describe('Home page', () => {
       }),
     ).toBeInTheDocument();
 
-    expect(within(rpmMetric).getByText('1,200')).toBeInTheDocument();
+    expect(within(rpmMetric).getByText('1.200')).toBeInTheDocument();
 
     const uptimeMetric = within(metricsRegion).getByRole('article', {
-      name: 'Uptime metric',
+      name: 'Métrica de tempo em operação',
     });
 
     expect(
       within(uptimeMetric).getByRole('heading', {
         level: 3,
-        name: 'Uptime',
+        name: 'Tempo em operação',
       }),
     ).toBeInTheDocument();
 
     expect(within(uptimeMetric).getByText('8 h')).toBeInTheDocument();
   });
 
-  it('shows the current machine OEE indicators', () => {
-    render(<Home />);
+  it('shows the current machine OEE indicators', async () => {
+    await renderHome();
 
     const oeeRegion = screen.getByRole('region', {
-      name: 'Overall equipment effectiveness',
+      name: 'Eficiência global do equipamento (OEE)',
     });
 
     expect(
       within(oeeRegion).getByRole('heading', {
         level: 2,
-        name: 'Overall equipment effectiveness',
+        name: 'Eficiência global do equipamento (OEE)',
       }),
     ).toBeInTheDocument();
 
     const overallOee = within(oeeRegion).getByRole('article', {
-      name: 'Overall OEE',
+      name: 'OEE geral',
     });
 
-    expect(within(overallOee).getByText('88.4%')).toBeInTheDocument();
+    expect(within(overallOee).getByText('88,4%')).toBeInTheDocument();
 
     const availability = within(oeeRegion).getByRole('article', {
-      name: 'Availability',
+      name: 'Disponibilidade',
     });
 
     expect(within(availability).getByText('96%')).toBeInTheDocument();
 
     const performance = within(oeeRegion).getByRole('article', {
-      name: 'Performance',
+      name: 'Desempenho',
     });
 
     expect(within(performance).getByText('94%')).toBeInTheDocument();
 
     const quality = within(oeeRegion).getByRole('article', {
-      name: 'Quality',
+      name: 'Qualidade',
     });
 
     expect(within(quality).getByText('98%')).toBeInTheDocument();
   });
 
-  it('shows the machine alert history from newest to oldest', () => {
-    render(<Home />);
+  it('shows the machine alert history from newest to oldest', async () => {
+    await renderHome();
 
     const alertHistoryRegion = screen.getByRole('region', {
-      name: 'Alert history',
+      name: 'Histórico de alertas',
     });
 
     expect(
       within(alertHistoryRegion).getByRole('heading', {
         level: 2,
-        name: 'Alert history',
+        name: 'Histórico de alertas',
       }),
     ).toBeInTheDocument();
 
@@ -176,20 +204,18 @@ describe('Home page', () => {
       throw new Error('Critical alert was not rendered');
     }
 
-    expect(within(criticalAlert).getByText('Critical')).toBeInTheDocument();
+    expect(within(criticalAlert).getByText('Crítico')).toBeInTheDocument();
 
     expect(
-      within(criticalAlert).getByText(
-        'Temperature exceeded the critical threshold',
-      ),
+      within(criticalAlert).getByText('A temperatura excedeu o limite crítico'),
     ).toBeInTheDocument();
 
     expect(
-      within(criticalAlert).getByText('temperature-sensor'),
+      within(criticalAlert).getByText('Sensor de temperatura'),
     ).toBeInTheDocument();
 
     const criticalAlertTimestamp = within(criticalAlert).getByLabelText(
-      'Critical alert timestamp',
+      'Horário do alerta crítico',
     );
 
     expect(criticalAlertTimestamp).toHaveAttribute(
@@ -205,11 +231,11 @@ describe('Home page', () => {
       throw new Error('Warning alert was not rendered');
     }
 
-    expect(within(warningAlert).getByText('Warning')).toBeInTheDocument();
+    expect(within(warningAlert).getByText('Alerta')).toBeInTheDocument();
 
     expect(
       within(warningAlert).getByText(
-        'Motor vibration is above the recommended level',
+        'A vibração do motor está acima do nível recomendado',
       ),
     ).toBeInTheDocument();
 
@@ -222,11 +248,239 @@ describe('Home page', () => {
     }
 
     expect(
-      within(informationAlert).getByText('Information'),
+      within(informationAlert).getByText('Informativo'),
     ).toBeInTheDocument();
 
     expect(
-      within(informationAlert).getByText('Machine monitoring started'),
+      within(informationAlert).getByText('Monitoramento da máquina iniciado'),
     ).toBeInTheDocument();
+  });
+
+  it('loads the machine snapshot through the dashboard dependency', async () => {
+    const machineStatus: MachineStatusTransport = {
+      id: 'mixer-01',
+      timestamp: '2026-07-13T15:45:00.000Z',
+      state: 'MAINTENANCE',
+      metrics: {
+        temperature: 64.7,
+        rpm: 0,
+        uptime: 43_210,
+        efficiency: 0,
+      },
+      oee: {
+        overall: 0,
+        availability: 81.3,
+        performance: 0,
+        quality: 96.4,
+      },
+    };
+
+    const loadMachineStatus = jest.fn(
+      async (machineId: string): Promise<MachineStatusTransport> => {
+        expect(machineId).toBe('mixer-01');
+
+        return machineStatus;
+      },
+    );
+
+    const page = await renderDashboardPage({
+      loadMachineStatus,
+    });
+
+    render(page);
+
+    expect(
+      screen.getByRole('status', {
+        name: 'Estado atual da máquina',
+      }),
+    ).toHaveTextContent('Em manutenção');
+
+    expect(screen.getByText('64,7 °C')).toBeInTheDocument();
+
+    expect(
+      screen.getByRole('article', {
+        name: 'Métrica de RPM',
+      }),
+    ).toHaveTextContent('0');
+
+    expect(
+      screen.getByRole('article', {
+        name: 'OEE geral',
+      }),
+    ).toHaveTextContent('0%');
+
+    expect(loadMachineStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it('loads the initial machine snapshot from the configured API', async () => {
+    const machineStatus: MachineStatusTransport = {
+      id: 'mixer-01',
+      timestamp: '2026-07-13T16:30:00.000Z',
+      state: 'MAINTENANCE',
+      metrics: {
+        temperature: 65.4,
+        rpm: 0,
+        uptime: 45_000,
+        efficiency: 0,
+      },
+      oee: {
+        overall: 0,
+        availability: 82.5,
+        performance: 0,
+        quality: 97.1,
+      },
+    };
+
+    const previousApiBaseUrl = process.env.API_BASE_URL;
+    const previousFetch = globalThis.fetch;
+
+    const fetchMock = jest.fn(
+      async (
+        input: RequestInfo | URL,
+        init?: RequestInit,
+      ): Promise<Response> => {
+        expect(input).toBe(
+          'http://api.example.test/api/v1/machines/mixer-01/status',
+        );
+
+        expect(init).toEqual({
+          cache: 'no-store',
+          headers: {
+            accept: 'application/json',
+          },
+        });
+
+        return {
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          json: async () => machineStatus,
+        } as Response;
+      },
+    );
+
+    process.env.API_BASE_URL = 'http://api.example.test';
+
+    Object.defineProperty(globalThis, 'fetch', {
+      configurable: true,
+      writable: true,
+      value: fetchMock,
+    });
+
+    try {
+      const page = await Home();
+
+      render(page);
+
+      expect(
+        screen.getByRole('status', {
+          name: 'Estado atual da máquina',
+        }),
+      ).toHaveTextContent('Em manutenção');
+
+      expect(screen.getByText('65,4 °C')).toBeInTheDocument();
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      if (previousApiBaseUrl === undefined) {
+        delete process.env.API_BASE_URL;
+      } else {
+        process.env.API_BASE_URL = previousApiBaseUrl;
+      }
+
+      Object.defineProperty(globalThis, 'fetch', {
+        configurable: true,
+        writable: true,
+        value: previousFetch,
+      });
+    }
+  });
+
+  it('shows a not found state when the monitored machine does not exist', async () => {
+    const loadMachineStatus = jest.fn(
+      async (): Promise<MachineStatusTransport> => {
+        throw new MachineApiError(
+          'Failed to load machine status: 404 Not Found',
+          404,
+        );
+      },
+    );
+
+    const page = await renderDashboardPage({
+      loadMachineStatus,
+    });
+
+    render(page);
+
+    expect(
+      screen.getByRole('status', {
+        name: 'Status da conexão em tempo real',
+      }),
+    ).toHaveTextContent('Desconectado');
+
+    const errorAlert = screen.getByRole('alert');
+
+    expect(
+      within(errorAlert).getByRole('heading', {
+        level: 2,
+        name: 'Máquina não encontrada',
+      }),
+    ).toBeInTheDocument();
+
+    expect(errorAlert).toHaveTextContent(
+      'A máquina monitorada não foi encontrada.',
+    );
+
+    expect(
+      screen.queryByRole('region', {
+        name: 'Status da máquina',
+      }),
+    ).not.toBeInTheDocument();
+
+    expect(loadMachineStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows an unavailable state when the machine data cannot be loaded', async () => {
+    const loadMachineStatus = jest.fn(
+      async (): Promise<MachineStatusTransport> => {
+        throw new MachineApiError(
+          'Failed to load machine status: 500 Internal Server Error',
+          500,
+        );
+      },
+    );
+
+    const page = await renderDashboardPage({
+      loadMachineStatus,
+    });
+
+    render(page);
+
+    expect(
+      screen.getByRole('status', {
+        name: 'Status da conexão em tempo real',
+      }),
+    ).toHaveTextContent('Desconectado');
+
+    const errorAlert = screen.getByRole('alert');
+
+    expect(
+      within(errorAlert).getByRole('heading', {
+        level: 2,
+        name: 'Dados da máquina indisponíveis',
+      }),
+    ).toBeInTheDocument();
+
+    expect(errorAlert).toHaveTextContent(
+      'Não foi possível carregar os dados mais recentes da máquina.',
+    );
+
+    expect(
+      screen.queryByRole('region', {
+        name: 'Status da máquina',
+      }),
+    ).not.toBeInTheDocument();
+
+    expect(loadMachineStatus).toHaveBeenCalledTimes(1);
   });
 });
