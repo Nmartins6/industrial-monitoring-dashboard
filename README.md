@@ -2,31 +2,44 @@
 
 Dashboard web para monitoramento de uma máquina industrial em tempo real.
 
-O projeto utiliza um monorepo com frontend em Next.js, API em Node.js, contratos TypeScript compartilhados, persistência SQLite e comunicação em tempo real por Server-Sent Events.
+O projeto foi desenvolvido como um monorepo TypeScript composto por:
+
+- aplicação web em Next.js;
+- API HTTP em Node.js;
+- persistência SQLite;
+- contratos compartilhados;
+- comunicação em tempo real por Server-Sent Events;
+- testes automatizados;
+- validações de lint, tipos, formatação e build.
 
 ## Status do projeto
 
-**Checkpoint atual: M18 concluída.**
+**Checkpoint atual: M19 concluída.**
 
-A aplicação já:
+A aplicação atualmente:
 
 - carrega o estado inicial da máquina pela API;
-- atualiza estado, métricas e OEE em tempo real;
+- exibe estado operacional, temperatura, RPM, uptime e eficiência;
+- calcula e apresenta os indicadores de OEE;
+- carrega o histórico inicial de métricas;
+- apresenta gráficos de temperatura, rotação e eficiência;
+- atualiza o dashboard em tempo real;
 - recebe novos alertas pelo stream SSE;
 - atualiza alertas existentes;
 - identifica conexão, desconexão e reconexão;
-- recupera-se quando o frontend inicia antes da API;
+- recupera-se quando o frontend é iniciado antes da API;
+- mantém uma janela móvel com as 30 medições mais recentes;
 - apresenta os textos da interface em português do Brasil.
 
-Próxima etapa:
+Próxima etapa planejada:
 
 ```text
-M19 — Histórico de métricas e gráficos
+M20 — Gerenciamento de alertas
 ```
 
 ## Tecnologias
 
-### Monorepo
+### Monorepo e qualidade
 
 - pnpm
 - Turborepo
@@ -40,33 +53,35 @@ M19 — Histórico de métricas e gráficos
 - Next.js
 - React
 - Tailwind CSS
+- Recharts
 - React Testing Library
 - Server-Sent Events
 
 ### API
 
-- Node.js HTTP
+- Node.js
+- HTTP nativo
 - SQLite
 - Server-Sent Events
 - Jest
 
-## Estrutura
+## Estrutura do projeto
 
 ```text
 industrial-monitoring-dashboard/
 ├── apps/
-│   ├── api/                  # API, SQLite, telemetria e stream SSE
+│   ├── api/                  # API, telemetria, persistência e stream SSE
 │   └── web/                  # Dashboard Next.js
 ├── packages/
-│   ├── contracts/            # Contratos compartilhados
-│   ├── eslint-config/        # Configuração compartilhada de lint
-│   └── typescript-config/    # Configuração compartilhada de TypeScript
+│   ├── contracts/            # Contratos TypeScript compartilhados
+│   ├── eslint-config/        # Configurações compartilhadas do ESLint
+│   └── typescript-config/    # Configurações compartilhadas do TypeScript
 ├── pnpm-workspace.yaml
 ├── turbo.json
 └── README.md
 ```
 
-O README raiz apresenta apenas a visão geral, a execução do projeto e o estado atual.
+Este README apresenta a visão geral, os requisitos para execução e o estado atual do projeto.
 
 Detalhes específicos de implementação devem permanecer próximos de cada aplicação ou pacote.
 
@@ -79,7 +94,7 @@ Node.js 24
 pnpm 11
 ```
 
-Confirme o ambiente:
+Confira o ambiente:
 
 ```bash
 node --version
@@ -88,7 +103,7 @@ pnpm --version
 
 ## Instalação
 
-Na raiz do projeto:
+Na raiz do projeto, execute:
 
 ```bash
 pnpm install --frozen-lockfile
@@ -96,13 +111,15 @@ pnpm install --frozen-lockfile
 
 ## Preparação obrigatória no primeiro uso
 
-A API importa o pacote interno:
+A API e o frontend utilizam o pacote interno:
 
 ```text
 @industrial-monitoring/contracts
 ```
 
-Esse pacote expõe seus arquivos compilados por meio do diretório `dist`. Em um clone limpo, compile os contratos antes de iniciar o ambiente de desenvolvimento:
+Esse pacote expõe seus arquivos compilados por meio do diretório `dist`.
+
+Em um clone limpo, compile os contratos antes de iniciar o ambiente de desenvolvimento:
 
 ```bash
 pnpm --filter @industrial-monitoring/contracts build
@@ -122,7 +139,7 @@ Cannot find module
 '@industrial-monitoring/contracts/dist/index.js'
 ```
 
-Também execute novamente o build dos contratos após alterar seus tipos, serializadores ou eventos:
+O build dos contratos também deve ser executado novamente depois de alterações em tipos, serializadores ou eventos compartilhados:
 
 ```bash
 pnpm --filter @industrial-monitoring/contracts build
@@ -130,7 +147,7 @@ pnpm --filter @industrial-monitoring/contracts build
 
 ## Execução rápida
 
-Para uma primeira execução:
+Fluxo recomendado para a primeira execução:
 
 ```bash
 pnpm install --frozen-lockfile
@@ -145,7 +162,7 @@ Frontend: http://localhost:3000
 API:      http://localhost:3333
 ```
 
-## Executar separadamente
+## Executar as aplicações separadamente
 
 ### API
 
@@ -172,25 +189,26 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:3333
 WEB_ORIGIN=http://localhost:3000
 ```
 
-Responsabilidades:
+### `API_BASE_URL`
 
-```text
-API_BASE_URL
-→ comunicação do servidor Next.js com a API
+Utilizada pelo servidor Next.js para carregar os dados iniciais da API.
 
-NEXT_PUBLIC_API_BASE_URL
-→ comunicação do navegador com o stream SSE
+### `NEXT_PUBLIC_API_BASE_URL`
 
-WEB_ORIGIN
-→ origem autorizada pela API para acessar o SSE
-```
+Utilizada pelo navegador para abrir a conexão Server-Sent Events.
 
-Exemplo de execução explícita:
+### `WEB_ORIGIN`
+
+Define a origem autorizada pela API para acessar o stream SSE.
+
+Exemplo de execução explícita da API:
 
 ```bash
 WEB_ORIGIN=http://localhost:3000 \
 pnpm --filter @industrial-monitoring/api dev
 ```
+
+Exemplo de execução explícita do frontend:
 
 ```bash
 API_BASE_URL=http://localhost:3333 \
@@ -198,7 +216,7 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:3333 \
 pnpm --filter @industrial-monitoring/web dev
 ```
 
-## Validação
+## Validação do projeto
 
 Execute todas as verificações do monorepo:
 
@@ -216,38 +234,77 @@ testes
 build
 ```
 
-Também é possível executar por aplicação:
+Também é possível executar as verificações separadamente.
+
+### Testes
 
 ```bash
 pnpm --filter @industrial-monitoring/api test
 pnpm --filter @industrial-monitoring/web test
 ```
 
+### Tipos
+
 ```bash
 pnpm --filter @industrial-monitoring/api typecheck
 pnpm --filter @industrial-monitoring/web typecheck
 ```
+
+### Lint
+
+```bash
+pnpm --filter @industrial-monitoring/api lint
+pnpm --filter @industrial-monitoring/web lint
+```
+
+### Build
 
 ```bash
 pnpm --filter @industrial-monitoring/api build
 pnpm --filter @industrial-monitoring/web build
 ```
 
+### Formatação
+
+```bash
+pnpm format
+pnpm format:check
+```
+
 ## Funcionalidades implementadas
 
-### Monitoramento
+### Monitoramento da máquina
 
-- estado operacional da máquina;
+O dashboard apresenta:
+
+- estado operacional;
 - temperatura;
 - RPM;
-- uptime;
+- tempo em operação;
 - eficiência;
 - disponibilidade;
 - performance;
 - qualidade;
 - OEE geral.
 
-### Tempo real
+### Histórico de métricas
+
+O frontend carrega o histórico inicial por meio da API e apresenta gráficos de:
+
+- temperatura;
+- rotação;
+- eficiência.
+
+Os gráficos:
+
+- utilizam Recharts;
+- recebem novos pontos em tempo real;
+- apresentam horários no eixo horizontal;
+- possuem resumo textual acessível;
+- funcionam em diferentes tamanhos de tela;
+- mantêm apenas as 30 medições mais recentes no navegador.
+
+### Comunicação em tempo real
 
 Eventos disponíveis:
 
@@ -270,45 +327,74 @@ O frontend:
 
 ### Alertas
 
-- níveis informativo, aviso e crítico;
-- histórico em ordem cronológica;
-- indicação de reconhecimento;
-- inclusão de alertas em tempo real;
-- atualização de alertas existentes.
+Atualmente o dashboard:
+
+- apresenta alertas informativos, de aviso e críticos;
+- recebe novos alertas em tempo real;
+- atualiza alertas existentes;
+- apresenta o estado de reconhecimento;
+- mantém os alertas mais recentes no início da lista.
+
+O carregamento inicial dos alertas ainda utiliza dados definidos no frontend.
+
+A integração completa do histórico inicial de alertas com a API será realizada na M20.
 
 ### Qualidade
 
+O projeto utiliza:
+
 - TypeScript estrito;
 - contratos compartilhados;
-- testes unitários e de integração;
-- TDD;
+- testes unitários;
+- testes de integração;
+- desenvolvimento orientado por testes;
 - lint;
 - formatação automática;
 - build validado pelo monorepo.
 
+## Fluxo principal de dados
+
+Ao abrir o dashboard, o servidor Next.js carrega:
+
+```text
+GET /api/v1/machines/:machineId/status
+GET /api/v1/machines/:machineId/metrics/history
+```
+
+Depois da renderização inicial, o navegador abre:
+
+```text
+GET /api/v1/machines/:machineId/events
+```
+
+Os eventos recebidos pelo stream atualizam o estado local do React sem recarregar a página.
+
 ## Próximos passos
 
-### M19 — Histórico e gráficos
+### M20 — Gerenciamento de alertas
 
-- carregar o histórico inicial de métricas;
-- exibir gráficos de temperatura, RPM e eficiência;
-- consumir `METRIC_RECORDED` nos gráficos;
-- limitar a quantidade de pontos no navegador;
-- garantir responsividade;
-- testar atualizações sem recarregar a página.
+- carregar o histórico inicial de alertas pela API;
+- remover os alertas estáticos do frontend;
+- permitir o reconhecimento de alertas;
+- enviar a ação de reconhecimento para a API;
+- atualizar os alertas após `ALERT_UPDATED`;
+- destacar alertas críticos não reconhecidos;
+- testar estados de carregamento, sucesso e falha.
 
 ### Etapas posteriores
 
-- reconhecimento de alertas pela interface;
 - aviso visual e sonoro para alertas críticos;
 - aplicação da identidade visual definitiva;
-- revisão de acessibilidade e responsividade;
-- Docker e documentação final de entrega;
-- screenshots e demonstração.
+- revisão de acessibilidade;
+- revisão completa de responsividade;
+- Docker para execução e entrega;
+- pipeline final de CI/CD;
+- documentação técnica final;
+- screenshots e demonstração da aplicação.
 
 ## Evoluções técnicas planejadas
 
-Estas melhorias foram identificadas, mas não fazem parte da implementação atual para evitar uma alteração arquitetural ampla perto da entrega.
+Algumas melhorias arquiteturais foram identificadas, mas não fazem parte da implementação atual para evitar alterações amplas próximas da entrega.
 
 ### Preparação automática dos contratos
 
@@ -318,19 +404,19 @@ Uma evolução será configurar o pipeline do Turborepo para garantir automatica
 
 ### Roteamento da API
 
-A API atual utiliza o módulo HTTP nativo do Node.js. O despacho das rotas está centralizado na função `handleRequest`.
+A API atual utiliza o módulo HTTP nativo do Node.js.
 
-Com o crescimento da aplicação, essa função passou a acumular responsabilidades como:
+O despacho das rotas está centralizado na função `handleRequest`, que atualmente participa de responsabilidades como:
 
 - identificação da rota;
 - validação do método HTTP;
-- extração de parâmetros;
-- seleção do handler;
+- extração de parâmetros da URL;
+- seleção do comportamento correspondente;
 - tratamento das respostas.
 
-Uma evolução posterior será adotar um roteador HTTP ou framework, como Express ou Fastify, e separar os handlers por domínio e rota.
+Com o crescimento da aplicação, uma evolução recomendada será adotar um roteador HTTP ou framework, como Express ou Fastify, e separar os handlers por domínio e rota.
 
-Essa mudança deve preservar:
+Essa alteração deverá preservar:
 
 - contratos compartilhados;
 - regras de negócio;
@@ -338,6 +424,20 @@ Essa mudança deve preservar:
 - testes;
 - stream SSE;
 - tratamento de erros.
+
+## Documentação específica
+
+Detalhes específicos do frontend estão disponíveis em:
+
+```text
+apps/web/README.md
+```
+
+A documentação específica da API poderá ser adicionada em:
+
+```text
+apps/api/README.md
+```
 
 ## Licença
 
