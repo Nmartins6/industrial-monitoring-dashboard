@@ -1,6 +1,10 @@
-import { describe, expect, it, jest } from '@jest/globals';
-import { render, screen, within } from '@testing-library/react';
-import type { MachineStatusTransport } from '@industrial-monitoring/contracts';
+import { afterAll, beforeAll, describe, expect, it, jest } from '@jest/globals';
+import { act, render, screen, within } from '@testing-library/react';
+import type {
+  AlertCreatedEvent,
+  MachineStatusTransport,
+  RealtimeEvent,
+} from '@industrial-monitoring/contracts';
 
 import Home, { renderDashboardPage } from './page';
 import { MachineApiError } from '@/lib/api/machine-api-client';
@@ -31,6 +35,73 @@ async function renderHome(): Promise<void> {
   render(page);
 }
 
+class FakePageEventSource {
+  static readonly instances: FakePageEventSource[] = [];
+
+  readonly url: string;
+
+  readonly listeners = new Map<string, EventListenerOrEventListenerObject>();
+
+  constructor(url: string | URL) {
+    this.url = String(url);
+
+    FakePageEventSource.instances.push(this);
+  }
+
+  addEventListener(
+    type: string,
+    listener: EventListenerOrEventListenerObject,
+  ): void {
+    this.listeners.set(type, listener);
+  }
+
+  emit(type: string, event: RealtimeEvent): void {
+    const listener = this.listeners.get(type);
+
+    if (listener === undefined) {
+      throw new Error(`No page listener registered for ${type}`);
+    }
+
+    const messageEvent = {
+      data: JSON.stringify(event),
+    } as MessageEvent<string>;
+
+    if (typeof listener === 'function') {
+      listener(messageEvent);
+
+      return;
+    }
+
+    listener.handleEvent(messageEvent);
+  }
+
+  close(): void {}
+}
+
+const previousEventSource = globalThis.EventSource;
+
+beforeAll(() => {
+  Object.defineProperty(globalThis, 'EventSource', {
+    configurable: true,
+    writable: true,
+    value: FakePageEventSource,
+  });
+});
+
+afterAll(() => {
+  if (previousEventSource === undefined) {
+    Reflect.deleteProperty(globalThis, 'EventSource');
+
+    return;
+  }
+
+  Object.defineProperty(globalThis, 'EventSource', {
+    configurable: true,
+    writable: true,
+    value: previousEventSource,
+  });
+});
+
 describe('Home page', () => {
   it('shows the dashboard heading', async () => {
     await renderHome();
@@ -54,7 +125,7 @@ describe('Home page', () => {
       screen.getByRole('status', {
         name: 'Status da conexão em tempo real',
       }),
-    ).toHaveTextContent('Conectado');
+    ).toHaveTextContent('Conectando');
   });
 
   it('shows the current machine operating status', async () => {
@@ -231,7 +302,7 @@ describe('Home page', () => {
       throw new Error('Warning alert was not rendered');
     }
 
-    expect(within(warningAlert).getByText('Alerta')).toBeInTheDocument();
+    expect(within(warningAlert).getByText('Aviso')).toBeInTheDocument();
 
     expect(
       within(warningAlert).getByText(
@@ -450,8 +521,11 @@ describe('Home page', () => {
       },
     );
 
+    const retryMachineData = jest.fn();
+
     const page = await renderDashboardPage({
       loadMachineStatus,
+      retryMachineData,
     });
 
     render(page);
@@ -482,5 +556,56 @@ describe('Home page', () => {
     ).not.toBeInTheDocument();
 
     expect(loadMachineStatus).toHaveBeenCalledTimes(1);
+
+    expect(
+      screen.getByRole('status', {
+        name: 'Tentativa de reconexão',
+      }),
+    ).toHaveTextContent('Tentando reconectar automaticamente...');
+  });
+
+  it('adds real-time alerts to the page history', async () => {
+    await renderHome();
+
+    const eventSource =
+      FakePageEventSource.instances[FakePageEventSource.instances.length - 1];
+
+    expect(eventSource).toBeDefined();
+
+    if (eventSource === undefined) {
+      throw new Error('Page EventSource was not created');
+    }
+
+    const alertCreatedEvent: AlertCreatedEvent = {
+      id: 'event-page-alert-001',
+      emittedAt: '2026-07-13T20:00:00.000Z',
+      type: 'ALERT_CREATED',
+      payload: {
+        id: 'alert-realtime-001',
+        level: 'CRITICAL',
+        message: 'Temperatura excedeu o limite crítico',
+        component: 'temperature-sensor',
+        timestamp: '2026-07-13T20:00:00.000Z',
+        acknowledged: false,
+      },
+    };
+
+    act(() => {
+      eventSource.emit('ALERT_CREATED', alertCreatedEvent);
+    });
+
+    const alertHistory = screen.getByRole('region', {
+      name: 'Histórico de alertas',
+    });
+
+    expect(within(alertHistory).getAllByRole('listitem')).toHaveLength(4);
+
+    expect(alertHistory).toHaveTextContent(
+      'Temperatura excedeu o limite crítico',
+    );
+
+    expect(alertHistory).toHaveTextContent('Crítico');
+
+    expect(alertHistory).toHaveTextContent('Aguardando reconhecimento');
   });
 });

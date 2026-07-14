@@ -1,51 +1,44 @@
-import type { MachineStatusTransport } from '@industrial-monitoring/contracts';
+import type {
+  AlertTransport,
+  MachineStatusTransport,
+} from '@industrial-monitoring/contracts';
 
-import { MachineSnapshot } from '@/components/machine-snapshot/machine-snapshot';
 import {
   createMachineApiClient,
   MachineApiError,
 } from '@/lib/api/machine-api-client';
 
-const ALERT_HISTORY = [
+import { MachineDataRetry } from '@/components/machine-data-retry/machine-data-retry';
+import { MachineRealtimeDashboard } from '@/components/machine-realtime-dashboard/machine-realtime-dashboard';
+
+const ALERT_HISTORY: readonly AlertTransport[] = [
   {
     id: 'alert-003',
-    level: 'Critical',
+    level: 'CRITICAL',
     message: 'A temperatura excedeu o limite crítico',
     component: 'Sensor de temperatura',
     timestamp: '2026-07-12T10:00:12.000Z',
-    displayTime: '10:00:12',
     acknowledged: false,
   },
   {
     id: 'alert-002',
-    level: 'Warning',
+    level: 'WARNING',
     message: 'A vibração do motor está acima do nível recomendado',
     component: 'Motor',
     timestamp: '2026-07-12T10:00:09.000Z',
-    displayTime: '10:00:09',
     acknowledged: false,
   },
   {
     id: 'alert-001',
-    level: 'Information',
+    level: 'INFO',
     message: 'Monitoramento da máquina iniciado',
     component: 'Sistema de monitoramento',
     timestamp: '2026-07-12T10:00:00.000Z',
-    displayTime: '10:00:00',
     acknowledged: true,
   },
 ] as const;
 
 const DEFAULT_API_BASE_URL = 'http://localhost:3333';
-
-const ALERT_LEVEL_LABELS: Record<
-  (typeof ALERT_HISTORY)[number]['level'],
-  string
-> = {
-  Critical: 'Crítico',
-  Warning: 'Alerta',
-  Information: 'Informativo',
-};
 
 type LoadMachineStatus = (machineId: string) => Promise<MachineStatusTransport>;
 
@@ -53,10 +46,12 @@ type MachineLoadFailure = 'not-found' | 'unavailable';
 
 interface RenderDashboardPageOptions {
   loadMachineStatus: LoadMachineStatus;
+  retryMachineData?: () => void;
 }
 
 export async function renderDashboardPage({
   loadMachineStatus,
+  retryMachineData,
 }: RenderDashboardPageOptions) {
   let machineStatus: MachineStatusTransport | null = null;
 
@@ -96,26 +91,19 @@ export async function renderDashboardPage({
               <p className="font-medium">Mixer 01</p>
             </div>
 
-            <div
-              role="status"
-              aria-label="Status da conexão em tempo real"
-              className={
-                isConnected
-                  ? 'flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-300'
-                  : 'flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-300'
-              }
-            >
-              <span
-                aria-hidden="true"
-                className={
-                  isConnected
-                    ? 'h-2 w-2 rounded-full bg-emerald-400'
-                    : 'h-2 w-2 rounded-full bg-red-400'
-                }
-              />
-
-              {isConnected ? 'Conectado' : 'Desconectado'}
-            </div>
+            {!isConnected ? (
+              <div
+                role="status"
+                aria-label="Status da conexão em tempo real"
+                className="flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-300"
+              >
+                <span
+                  aria-hidden="true"
+                  className="h-2 w-2 rounded-full bg-red-400"
+                />
+                Desconectado
+              </div>
+            ) : null}
           </div>
         </div>
       </header>
@@ -156,71 +144,17 @@ export async function renderDashboardPage({
                 <p className="mt-2 text-sm text-red-100">
                   Não foi possível carregar os dados mais recentes da máquina.
                 </p>
+
+                <MachineDataRetry onRetry={retryMachineData} />
               </>
             )}
           </section>
         ) : (
           <>
-            <MachineSnapshot machineStatus={machineStatus} />
-
-            <section aria-labelledby="alert-history-title" className="mt-6">
-              <div className="flex items-center justify-between">
-                <h2 id="alert-history-title" className="text-lg font-semibold">
-                  Histórico de alertas
-                </h2>
-
-                <p className="text-sm text-slate-400">
-                  Eventos mais recentes da máquina
-                </p>
-              </div>
-
-              <ul className="mt-4 space-y-3">
-                {ALERT_HISTORY.map((alert) => {
-                  const alertLevelLabel = ALERT_LEVEL_LABELS[alert.level];
-
-                  return (
-                    <li
-                      key={alert.id}
-                      className="rounded-xl border border-slate-800 bg-slate-900 p-5"
-                    >
-                      <article>
-                        <div className="flex flex-wrap items-start justify-between gap-4">
-                          <div>
-                            <div className="flex flex-wrap items-center gap-3">
-                              <p className="text-sm font-semibold">
-                                {alertLevelLabel}
-                              </p>
-
-                              <p className="text-xs text-slate-400">
-                                {alert.component}
-                              </p>
-                            </div>
-
-                            <p className="mt-2 text-sm text-slate-200">
-                              {alert.message}
-                            </p>
-                          </div>
-
-                          <time
-                            aria-label={`Horário do alerta ${alertLevelLabel.toLowerCase()}`}
-                            dateTime={alert.timestamp}
-                            className="text-sm text-slate-400"
-                          >
-                            {alert.displayTime}
-                          </time>
-                        </div>
-
-                        <p className="mt-3 text-xs text-slate-500">
-                          {alert.acknowledged
-                            ? 'Reconhecido'
-                            : 'Aguardando reconhecimento'}
-                        </p>
-                      </article>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
+            <MachineRealtimeDashboard
+              initialMachineStatus={machineStatus}
+              initialAlerts={ALERT_HISTORY}
+            />
           </>
         )}
       </main>
