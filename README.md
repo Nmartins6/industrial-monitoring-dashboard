@@ -2,587 +2,343 @@
 
 Dashboard web para monitoramento de uma máquina industrial em tempo real.
 
-O projeto está sendo desenvolvido de forma incremental, com TDD, contratos compartilhados, validação automatizada e separação clara entre domínio, infraestrutura, API e interface web.
+O projeto utiliza um monorepo com frontend em Next.js, API em Node.js, contratos TypeScript compartilhados, persistência SQLite e comunicação em tempo real por Server-Sent Events.
 
-## Status atual
+## Status do projeto
 
-**Checkpoint:** M16 concluída e integrada à `main`.
+**Checkpoint atual: M18 concluída.**
 
-A fundação completa da API e da aplicação web já está implementada. O frontend ainda utiliza dados estáticos e será conectado à API na próxima milestone.
+A aplicação já:
 
-### Progresso
+- carrega o estado inicial da máquina pela API;
+- atualiza estado, métricas e OEE em tempo real;
+- recebe novos alertas pelo stream SSE;
+- atualiza alertas existentes;
+- identifica conexão, desconexão e reconexão;
+- recupera-se quando o frontend inicia antes da API;
+- apresenta os textos da interface em português do Brasil.
 
-- [x] Fundação do monorepo
-- [x] Configuração de TypeScript, ESLint, Prettier e Turborepo
-- [x] Contratos compartilhados
-- [x] API HTTP
-- [x] Persistência SQLite
-- [x] Histórico e reconhecimento de alertas
-- [x] Stream em tempo real com Server-Sent Events
-- [x] Simulador dinâmico de telemetria
-- [x] Avaliação de condições operacionais
-- [x] Alertas automáticos
-- [x] Deduplicação de alertas ativos
-- [x] Cálculo dinâmico de OEE
-- [x] Fundação da aplicação Next.js
-- [x] Testes do frontend com Jest e React Testing Library
-- [x] Estrutura semântica inicial do dashboard
-- [ ] Integração tipada entre frontend e API
-- [ ] Consumo do stream SSE pelo frontend
-- [ ] Gráficos de histórico em tempo real
-- [ ] Interação com alertas
-- [ ] Aplicação da identidade visual definitiva
-- [ ] Revisão final de responsividade e acessibilidade
-- [ ] Pipeline final de CI/CD e documentação de entrega
-
-## Objetivo
-
-A aplicação deve permitir o acompanhamento de uma máquina industrial por meio de:
-
-- estado operacional atual;
-- temperatura;
-- RPM;
-- uptime;
-- eficiência;
-- disponibilidade;
-- performance;
-- qualidade;
-- OEE geral;
-- histórico de métricas;
-- alertas por severidade;
-- atualizações em tempo real;
-- indicação de desconexão ou falha de comunicação.
-
-## Arquitetura
-
-O projeto utiliza um monorepo administrado com `pnpm` e Turborepo.
+Próxima etapa:
 
 ```text
-industrial-monitoring-dashboard/
-├── apps/
-│   ├── api/             # API HTTP, SQLite, telemetria e SSE
-│   └── web/             # Aplicação Next.js
-├── packages/
-│   └── contracts/       # Tipos, contratos e eventos compartilhados
-├── compose.dev.yaml
-├── pnpm-workspace.yaml
-├── turbo.json
-└── README.md
-```
-
-### Separação de responsabilidades
-
-```text
-Contracts
-├── tipos de domínio
-├── tipos de transporte
-├── serializadores
-└── eventos em tempo real
-
-API
-├── rotas HTTP
-├── repositórios
-├── persistência SQLite
-├── simulação de telemetria
-├── avaliação de condições
-├── cálculo de OEE
-├── criação de alertas
-└── stream SSE
-
-Web
-├── estrutura da interface
-├── componentes acessíveis
-├── status da máquina
-├── métricas
-├── indicadores de OEE
-└── histórico de alertas
+M19 — Histórico de métricas e gráficos
 ```
 
 ## Tecnologias
 
-### Monorepo e qualidade
+### Monorepo
 
-- Node.js 24
-- pnpm 11
+- pnpm
 - Turborepo
 - TypeScript
 - ESLint
 - Prettier
 - Jest
 
+### Frontend
+
+- Next.js
+- React
+- Tailwind CSS
+- React Testing Library
+- Server-Sent Events
+
 ### API
 
-- Node.js HTTP nativo
-- SQLite por meio de `node:sqlite`
+- Node.js HTTP
+- SQLite
 - Server-Sent Events
-- Arquitetura orientada a contratos e injeção de dependências
-
-### Web
-
-- Next.js 16
-- React 19
-- TypeScript
-- Tailwind CSS 4
 - Jest
-- React Testing Library
-- Testing Library Jest DOM
 
-## Funcionalidades implementadas
-
-### API HTTP
-
-Endpoints disponíveis:
+## Estrutura
 
 ```text
-GET /health
-GET /api/v1/machines/:machineId/status
-GET /api/v1/machines/:machineId/metrics/history
-GET /api/v1/machines/:machineId/alerts
-PATCH /api/v1/machines/:machineId/alerts/:alertId/acknowledge
-GET /api/v1/machines/:machineId/events
+industrial-monitoring-dashboard/
+├── apps/
+│   ├── api/                  # API, SQLite, telemetria e stream SSE
+│   └── web/                  # Dashboard Next.js
+├── packages/
+│   ├── contracts/            # Contratos compartilhados
+│   ├── eslint-config/        # Configuração compartilhada de lint
+│   └── typescript-config/    # Configuração compartilhada de TypeScript
+├── pnpm-workspace.yaml
+├── turbo.json
+└── README.md
 ```
 
-As rotas possuem tratamento para:
+O README raiz apresenta apenas a visão geral, a execução do projeto e o estado atual.
 
-- máquina inexistente;
-- alerta inexistente;
-- método HTTP não permitido;
-- rota inexistente;
-- respostas JSON tipadas;
-- headers `Allow` quando aplicável.
+Detalhes específicos de implementação devem permanecer próximos de cada aplicação ou pacote.
 
-### Persistência
+## Pré-requisitos
 
-O runtime da API utiliza SQLite.
-
-O banco padrão é criado em:
+Versões utilizadas durante o desenvolvimento:
 
 ```text
-data/industrial-monitoring.db
+Node.js 24
+pnpm 11
 ```
 
-A persistência implementada cobre:
+Confirme o ambiente:
 
-- máquinas cadastradas;
-- histórico de alertas;
-- reconhecimento de alertas;
-- criação de alertas automáticos;
-- manutenção dos dados após reiniciar a aplicação.
-
-Os repositórios são abstraídos por interfaces, permitindo o uso de implementações em memória nos testes.
-
-### Atualizações em tempo real
-
-O endpoint SSE é:
-
-```text
-GET /api/v1/machines/mixer-01/events
+```bash
+node --version
+pnpm --version
 ```
 
-Ao abrir uma conexão, a API envia:
+## Instalação
 
-```text
-CONNECTED
-```
-
-A cada aproximadamente três segundos, envia:
-
-```text
-MACHINE_STATUS_UPDATED
-METRIC_RECORDED
-```
-
-Quando uma nova condição operacional é detectada, também pode enviar:
-
-```text
-ALERT_CREATED
-```
-
-O agendamento é cancelado automaticamente quando o cliente encerra a conexão.
-
-### Simulação de telemetria
-
-A telemetria evolui de forma gradual e testável.
-
-Valores simulados:
-
-- temperatura;
-- RPM;
-- uptime;
-- eficiência;
-- disponibilidade;
-- qualidade;
-- performance;
-- OEE geral.
-
-A fonte pseudoaleatória é injetável, permitindo testes determinísticos.
-
-Limites protegidos:
-
-```text
-temperatura >= 0
-RPM >= 0
-eficiência entre 0 e 100
-disponibilidade entre 0 e 100
-qualidade entre 0 e 100
-```
-
-Valores inválidos, não finitos ou fora da faixa esperada da fonte pseudoaleatória são rejeitados.
-
-### Estados operacionais
-
-Estados suportados:
-
-```text
-RUNNING
-STOPPED
-MAINTENANCE
-ERROR
-```
-
-Para uma máquina em `RUNNING`:
-
-- RPM e eficiência podem variar;
-- uptime aumenta;
-- OEE é recalculado.
-
-Para `STOPPED`, `MAINTENANCE` ou `ERROR`:
-
-- RPM permanece em zero;
-- eficiência e performance permanecem em zero;
-- uptime não aumenta;
-- OEE geral permanece em zero;
-- temperatura ainda pode ser monitorada.
-
-### Avaliação de condições
-
-Regras atualmente implementadas:
-
-```text
-temperatura abaixo de 80 °C
-→ nenhuma condição
-
-temperatura entre 80 °C e 89,9 °C
-→ HIGH_TEMPERATURE
-→ severidade WARNING
-→ máquina continua RUNNING
-
-temperatura igual ou superior a 90 °C
-→ CRITICAL_TEMPERATURE
-→ severidade CRITICAL
-→ estado da máquina passa para ERROR
-```
-
-As regras são isoladas da camada HTTP e não conhecem banco, SSE ou detalhes de infraestrutura.
-
-### Alertas automáticos
-
-Uma condição nova pode gerar:
-
-1. criação do objeto `Alert`;
-2. persistência no repositório;
-3. emissão do evento `ALERT_CREATED`.
-
-Alertas automáticos nascem com:
-
-```text
-acknowledged: false
-```
-
-Também existe controle de transição para evitar alertas duplicados:
-
-```text
-normal → crítico
-→ cria alerta
-
-crítico → crítico
-→ não cria outro alerta
-
-crítico → normal → crítico
-→ cria um novo alerta
-```
-
-### OEE
-
-O cálculo utiliza:
-
-```text
-OEE = disponibilidade × performance × qualidade
-```
-
-Exemplo:
-
-```text
-disponibilidade: 96%
-performance:     94%
-qualidade:       98%
-
-OEE:
-0,96 × 0,94 × 0,98 × 100
-= 88,4%
-```
-
-O cálculo é isolado, validado e reutilizado pelo simulador de telemetria.
-
-### Interface web
-
-A aplicação web já possui estrutura inicial para:
-
-- cabeçalho do dashboard;
-- identificação da máquina;
-- indicador de conexão;
-- estado operacional;
-- horário da última atualização;
-- temperatura;
-- RPM;
-- uptime;
-- OEE geral;
-- disponibilidade;
-- performance;
-- qualidade;
-- histórico de alertas.
-
-A estrutura foi construída com HTML semântico e consultas de teste orientadas por acessibilidade.
-
-Neste checkpoint, os valores exibidos pelo frontend ainda são estáticos.
-
-## Identidade visual
-
-A identidade visual definitiva ainda não foi aplicada.
-
-A paleta de cores e os logos serão fornecidos antes da etapa de estilização final. As cores atuais do frontend são temporárias e servem apenas para facilitar a visualização da estrutura.
-
-A estilização definitiva deverá ser centralizada em tokens de design, evitando cores e valores de marca espalhados pelos componentes.
-
-## Como executar
-
-### Pré-requisitos
-
-```text
-Node.js >= 24.16 e < 25
-pnpm >= 11.11 e < 12
-```
-
-### Instalação
+Na raiz do projeto:
 
 ```bash
 pnpm install --frozen-lockfile
 ```
 
-### Executar API e frontend
+## Preparação obrigatória no primeiro uso
 
-Para iniciar todos os pacotes com script de desenvolvimento:
+A API importa o pacote interno:
+
+```text
+@industrial-monitoring/contracts
+```
+
+Esse pacote expõe seus arquivos compilados por meio do diretório `dist`. Em um clone limpo, compile os contratos antes de iniciar o ambiente de desenvolvimento:
+
+```bash
+pnpm --filter @industrial-monitoring/contracts build
+```
+
+Depois execute:
 
 ```bash
 pnpm dev
 ```
 
-Ou separadamente:
+Sem a compilação inicial dos contratos, a API pode apresentar um erro semelhante a:
 
-```bash
-pnpm --filter @industrial-monitoring/api dev
+```text
+Error [ERR_MODULE_NOT_FOUND]:
+Cannot find module
+'@industrial-monitoring/contracts/dist/index.js'
 ```
 
+Também execute novamente o build dos contratos após alterar seus tipos, serializadores ou eventos:
+
 ```bash
-pnpm --filter @industrial-monitoring/web dev
+pnpm --filter @industrial-monitoring/contracts build
+```
+
+## Execução rápida
+
+Para uma primeira execução:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm --filter @industrial-monitoring/contracts build
+pnpm dev
 ```
 
 Endereços padrão:
 
 ```text
-API: http://localhost:3333
-Web: http://localhost:3000
+Frontend: http://localhost:3000
+API:      http://localhost:3333
 ```
 
-### Build de produção
+## Executar separadamente
+
+### API
 
 ```bash
-pnpm build
-```
-
-Para iniciar o frontend após o build:
-
-```bash
-pnpm --filter @industrial-monitoring/web start
-```
-
-### Validação completa
-
-```bash
-pnpm check
-```
-
-Esse comando executa:
-
-```text
-Prettier
-TypeScript
-ESLint
-Jest
-Build
-```
-
-### Testes por pacote
-
-API:
-
-```bash
-pnpm --filter @industrial-monitoring/api test
-```
-
-Frontend:
-
-```bash
-pnpm --filter @industrial-monitoring/web test
-```
-
-Cobertura da API:
-
-```bash
-pnpm --filter @industrial-monitoring/api test:coverage
-```
-
-Cobertura do frontend:
-
-```bash
-pnpm --filter @industrial-monitoring/web test:coverage
-```
-
-## Validação manual do SSE
-
-Inicie a API:
-
-```bash
+pnpm --filter @industrial-monitoring/contracts build
 pnpm --filter @industrial-monitoring/api dev
 ```
 
-Em outro terminal:
+### Frontend
 
 ```bash
-curl --http1.1 --no-buffer -N \
-  -H 'Accept: text/event-stream' \
-  http://localhost:3333/api/v1/machines/mixer-01/events
+pnpm --filter @industrial-monitoring/web dev
 ```
 
-O stream deve começar com:
+## Variáveis de ambiente
+
+Os valores padrão permitem executar o projeto localmente sem criar um arquivo `.env`.
+
+Variáveis disponíveis:
+
+```text
+API_BASE_URL=http://localhost:3333
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3333
+WEB_ORIGIN=http://localhost:3000
+```
+
+Responsabilidades:
+
+```text
+API_BASE_URL
+→ comunicação do servidor Next.js com a API
+
+NEXT_PUBLIC_API_BASE_URL
+→ comunicação do navegador com o stream SSE
+
+WEB_ORIGIN
+→ origem autorizada pela API para acessar o SSE
+```
+
+Exemplo de execução explícita:
+
+```bash
+WEB_ORIGIN=http://localhost:3000 \
+pnpm --filter @industrial-monitoring/api dev
+```
+
+```bash
+API_BASE_URL=http://localhost:3333 \
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3333 \
+pnpm --filter @industrial-monitoring/web dev
+```
+
+## Validação
+
+Execute todas as verificações do monorepo:
+
+```bash
+pnpm check
+```
+
+O comando valida:
+
+```text
+formatação
+tipos
+lint
+testes
+build
+```
+
+Também é possível executar por aplicação:
+
+```bash
+pnpm --filter @industrial-monitoring/api test
+pnpm --filter @industrial-monitoring/web test
+```
+
+```bash
+pnpm --filter @industrial-monitoring/api typecheck
+pnpm --filter @industrial-monitoring/web typecheck
+```
+
+```bash
+pnpm --filter @industrial-monitoring/api build
+pnpm --filter @industrial-monitoring/web build
+```
+
+## Funcionalidades implementadas
+
+### Monitoramento
+
+- estado operacional da máquina;
+- temperatura;
+- RPM;
+- uptime;
+- eficiência;
+- disponibilidade;
+- performance;
+- qualidade;
+- OEE geral.
+
+### Tempo real
+
+Eventos disponíveis:
 
 ```text
 CONNECTED
-```
-
-E depois emitir ciclos com:
-
-```text
 MACHINE_STATUS_UPDATED
 METRIC_RECORDED
-```
-
-Quando uma nova condição for detectada:
-
-```text
 ALERT_CREATED
+ALERT_UPDATED
 ```
 
-Encerre o `curl` com `Ctrl+C`.
+O frontend:
 
-## Estratégia de desenvolvimento
+- abre uma conexão SSE;
+- atualiza os dados sem recarregar a página;
+- informa o estado atual da conexão;
+- tenta reconectar após interrupções;
+- recupera-se quando a API inicia depois do frontend;
+- encerra conexões e agendamentos ao desmontar componentes.
 
-O projeto está sendo implementado em milestones pequenas.
+### Alertas
 
-Cada comportamento relevante segue o ciclo:
+- níveis informativo, aviso e crítico;
+- histórico em ordem cronológica;
+- indicação de reconhecimento;
+- inclusão de alertas em tempo real;
+- atualização de alertas existentes.
 
-```text
-RED
-→ criação do teste que descreve o comportamento esperado
+### Qualidade
 
-GREEN
-→ implementação mínima para fazer o teste passar
-
-REFACTOR
-→ melhoria estrutural mantendo os testes verdes
-```
-
-Antes de integrar cada milestone:
-
-```bash
-pnpm install --frozen-lockfile
-pnpm check
-git diff --check
-```
-
-## Onde o desenvolvimento parou
-
-A milestone **M16 — Fundação da aplicação web** foi concluída.
-
-O frontend já possui sua estrutura inicial e testes, mas ainda não consome dados reais.
-
-O próximo ponto de desenvolvimento é:
-
-```text
-M17 — Integração tipada com a API
-```
+- TypeScript estrito;
+- contratos compartilhados;
+- testes unitários e de integração;
+- TDD;
+- lint;
+- formatação automática;
+- build validado pelo monorepo.
 
 ## Próximos passos
 
-### M17 — Cliente HTTP tipado
-
-- adicionar `@industrial-monitoring/contracts` como dependência do frontend;
-- criar cliente HTTP isolado;
-- configurar a URL da API por variável de ambiente;
-- buscar o snapshot inicial da máquina;
-- substituir estado, métricas e OEE estáticos;
-- tratar carregamento, erro e máquina inexistente.
-
-### M18 — Integração SSE
-
-- criar cliente de eventos em tempo real;
-- consumir `CONNECTED`;
-- consumir `MACHINE_STATUS_UPDATED`;
-- consumir `METRIC_RECORDED`;
-- consumir `ALERT_CREATED`;
-- atualizar a interface sem recarregar a página;
-- implementar estado de conexão;
-- tratar desconexão e reconexão.
-
 ### M19 — Histórico e gráficos
 
-- integrar histórico inicial de métricas;
-- adicionar gráficos de temperatura, RPM e eficiência;
-- acrescentar pontos recebidos por SSE;
-- limitar a quantidade de pontos mantidos no navegador;
-- garantir comportamento responsivo.
+- carregar o histórico inicial de métricas;
+- exibir gráficos de temperatura, RPM e eficiência;
+- consumir `METRIC_RECORDED` nos gráficos;
+- limitar a quantidade de pontos no navegador;
+- garantir responsividade;
+- testar atualizações sem recarregar a página.
 
-### M20 — Alertas interativos
+### Etapas posteriores
 
-- carregar histórico real de alertas;
-- atualizar a lista com `ALERT_CREATED`;
-- reconhecer alertas pelo frontend;
-- refletir `ALERT_UPDATED`;
-- adicionar aviso visual;
-- avaliar aviso sonoro para alertas críticos.
+- reconhecimento de alertas pela interface;
+- aviso visual e sonoro para alertas críticos;
+- aplicação da identidade visual definitiva;
+- revisão de acessibilidade e responsividade;
+- Docker e documentação final de entrega;
+- screenshots e demonstração.
 
-### M21 — Identidade visual e experiência
+## Evoluções técnicas planejadas
 
-- aplicar paleta oficial;
-- adicionar logos;
-- centralizar tokens de design;
-- revisar modo escuro;
-- revisar responsividade;
-- revisar contraste e acessibilidade;
-- melhorar estados vazios, carregamento e erro.
+Estas melhorias foram identificadas, mas não fazem parte da implementação atual para evitar uma alteração arquitetural ampla perto da entrega.
 
-### M22 — Entrega
+### Preparação automática dos contratos
 
-- revisar Docker e execução completa;
-- finalizar CI/CD;
-- atualizar documentação;
-- adicionar screenshots;
-- preparar demonstração;
-- revisar todos os requisitos obrigatórios e extras;
-- validar o projeto em ambiente limpo.
+Atualmente, o build inicial de `packages/contracts` precisa ser executado antes do primeiro `pnpm dev`.
+
+Uma evolução será configurar o pipeline do Turborepo para garantir automaticamente que as dependências internas estejam compiladas antes da inicialização das aplicações.
+
+### Roteamento da API
+
+A API atual utiliza o módulo HTTP nativo do Node.js. O despacho das rotas está centralizado na função `handleRequest`.
+
+Com o crescimento da aplicação, essa função passou a acumular responsabilidades como:
+
+- identificação da rota;
+- validação do método HTTP;
+- extração de parâmetros;
+- seleção do handler;
+- tratamento das respostas.
+
+Uma evolução posterior será adotar um roteador HTTP ou framework, como Express ou Fastify, e separar os handlers por domínio e rota.
+
+Essa mudança deve preservar:
+
+- contratos compartilhados;
+- regras de negócio;
+- repositórios;
+- testes;
+- stream SSE;
+- tratamento de erros.
 
 ## Licença
 
 Projeto desenvolvido para fins de avaliação técnica.
-
-Uso não autorizado não é permitido.
