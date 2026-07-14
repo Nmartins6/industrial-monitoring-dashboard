@@ -1,8 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it, jest } from '@jest/globals';
 import { act, render, screen, within } from '@testing-library/react';
+
 import type {
   AlertCreatedEvent,
   MachineStatusTransport,
+  MetricHistoryTransport,
   RealtimeEvent,
 } from '@industrial-monitoring/contracts';
 
@@ -383,7 +385,7 @@ describe('Home page', () => {
     expect(loadMachineStatus).toHaveBeenCalledTimes(1);
   });
 
-  it('loads the initial machine snapshot from the configured API', async () => {
+  it('loads the initial machine data from the configured API', async () => {
     const machineStatus: MachineStatusTransport = {
       id: 'mixer-01',
       timestamp: '2026-07-13T16:30:00.000Z',
@@ -402,6 +404,21 @@ describe('Home page', () => {
       },
     };
 
+    const metricHistory: MetricHistoryTransport[] = [
+      {
+        timestamp: '2026-07-13T16:29:57.000Z',
+        temperature: 64.8,
+        rpm: 0,
+        efficiency: 0,
+      },
+      {
+        timestamp: '2026-07-13T16:30:00.000Z',
+        temperature: 65.4,
+        rpm: 0,
+        efficiency: 0,
+      },
+    ];
+
     const previousApiBaseUrl = process.env.API_BASE_URL;
     const previousFetch = globalThis.fetch;
 
@@ -410,10 +427,6 @@ describe('Home page', () => {
         input: RequestInfo | URL,
         init?: RequestInit,
       ): Promise<Response> => {
-        expect(input).toBe(
-          'http://api.example.test/api/v1/machines/mixer-01/status',
-        );
-
         expect(init).toEqual({
           cache: 'no-store',
           headers: {
@@ -421,12 +434,30 @@ describe('Home page', () => {
           },
         });
 
-        return {
-          ok: true,
-          status: 200,
-          statusText: 'OK',
-          json: async () => machineStatus,
-        } as Response;
+        const url = String(input);
+
+        if (url === 'http://api.example.test/api/v1/machines/mixer-01/status') {
+          return {
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: async () => machineStatus,
+          } as Response;
+        }
+
+        if (
+          url ===
+          'http://api.example.test/api/v1/machines/mixer-01/metrics/history'
+        ) {
+          return {
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: async () => metricHistory,
+          } as Response;
+        }
+
+        throw new Error(`Unexpected API request: ${url}`);
       },
     );
 
@@ -449,9 +480,36 @@ describe('Home page', () => {
         }),
       ).toHaveTextContent('Em manutenção');
 
-      expect(screen.getByText('65,4 °C')).toBeInTheDocument();
+      const currentMetricsRegion = screen.getByRole('region', {
+        name: 'Métricas atuais',
+      });
 
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const temperatureMetric = within(currentMetricsRegion).getByRole(
+        'article',
+        {
+          name: 'Métrica de temperatura',
+        },
+      );
+
+      expect(
+        within(temperatureMetric).getByText('65,4 °C'),
+      ).toBeInTheDocument();
+
+      const metricHistoryRegion = screen.getByRole('region', {
+        name: 'Histórico de métricas',
+      });
+
+      expect(metricHistoryRegion).toHaveTextContent('2 medições no período');
+
+      expect(metricHistoryRegion).toHaveTextContent(
+        'Última temperatura: 65,4 °C',
+      );
+
+      expect(metricHistoryRegion).toHaveTextContent('Última rotação: 0 RPM');
+
+      expect(metricHistoryRegion).toHaveTextContent('Última eficiência: 0%');
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
     } finally {
       if (previousApiBaseUrl === undefined) {
         delete process.env.API_BASE_URL;
@@ -607,5 +665,62 @@ describe('Home page', () => {
     expect(alertHistory).toHaveTextContent('Crítico');
 
     expect(alertHistory).toHaveTextContent('Aguardando reconhecimento');
+  });
+
+  it('loads the initial metric history through the dashboard dependency', async () => {
+    const metricHistory: MetricHistoryTransport[] = [
+      {
+        timestamp: '2026-07-13T15:44:57.000Z',
+        temperature: 63.8,
+        rpm: 0,
+        efficiency: 0,
+      },
+      {
+        timestamp: '2026-07-13T15:45:00.000Z',
+        temperature: 64.7,
+        rpm: 0,
+        efficiency: 0,
+      },
+    ];
+
+    const loadMachineStatus = jest.fn(
+      async (machineId: string): Promise<MachineStatusTransport> => {
+        expect(machineId).toBe('mixer-01');
+
+        return DEFAULT_MACHINE_STATUS;
+      },
+    );
+
+    const loadMetricHistory = jest.fn(
+      async (machineId: string): Promise<MetricHistoryTransport[]> => {
+        expect(machineId).toBe('mixer-01');
+
+        return metricHistory;
+      },
+    );
+
+    const page = await renderDashboardPage({
+      loadMachineStatus,
+      loadMetricHistory,
+    });
+
+    render(page);
+
+    const metricHistoryRegion = screen.getByRole('region', {
+      name: 'Histórico de métricas',
+    });
+
+    expect(metricHistoryRegion).toHaveTextContent('2 medições no período');
+
+    expect(metricHistoryRegion).toHaveTextContent(
+      'Última temperatura: 64,7 °C',
+    );
+
+    expect(metricHistoryRegion).toHaveTextContent('Última rotação: 0 RPM');
+
+    expect(metricHistoryRegion).toHaveTextContent('Última eficiência: 0%');
+
+    expect(loadMachineStatus).toHaveBeenCalledTimes(1);
+    expect(loadMetricHistory).toHaveBeenCalledTimes(1);
   });
 });

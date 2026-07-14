@@ -1,4 +1,7 @@
-import type { MachineStatusTransport } from '@industrial-monitoring/contracts';
+import type {
+  MachineStatusTransport,
+  MetricHistoryTransport,
+} from '@industrial-monitoring/contracts';
 
 type Fetch = (
   input: RequestInfo | URL,
@@ -12,6 +15,7 @@ interface CreateMachineApiClientOptions {
 
 interface MachineApiClient {
   getMachineStatus(machineId: string): Promise<MachineStatusTransport>;
+  getMetricHistory(machineId: string): Promise<MetricHistoryTransport[]>;
 }
 
 export class MachineApiError extends Error {
@@ -49,6 +53,29 @@ export function createMachineApiClient({
       }
 
       return response.json() as Promise<MachineStatusTransport>;
+    },
+
+    async getMetricHistory(
+      machineId: string,
+    ): Promise<MetricHistoryTransport[]> {
+      const response = await fetch(
+        `${baseUrl}/api/v1/machines/${machineId}/metrics/history`,
+        {
+          cache: 'no-store',
+          headers: {
+            accept: 'application/json',
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new MachineApiError(
+          `Failed to load machine metric history: ${response.status} ${response.statusText}`,
+          response.status,
+        );
+      }
+
+      return response.json() as Promise<MetricHistoryTransport[]>;
     },
   };
 }

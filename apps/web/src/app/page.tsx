@@ -1,6 +1,7 @@
 import type {
   AlertTransport,
   MachineStatusTransport,
+  MetricHistoryTransport,
 } from '@industrial-monitoring/contracts';
 
 import {
@@ -42,23 +43,35 @@ const DEFAULT_API_BASE_URL = 'http://localhost:3333';
 
 type LoadMachineStatus = (machineId: string) => Promise<MachineStatusTransport>;
 
+type LoadMetricHistory = (
+  machineId: string,
+) => Promise<MetricHistoryTransport[]>;
+
 type MachineLoadFailure = 'not-found' | 'unavailable';
 
 interface RenderDashboardPageOptions {
   loadMachineStatus: LoadMachineStatus;
+  loadMetricHistory?: LoadMetricHistory;
   retryMachineData?: () => void;
 }
 
 export async function renderDashboardPage({
   loadMachineStatus,
+  loadMetricHistory,
   retryMachineData,
 }: RenderDashboardPageOptions) {
   let machineStatus: MachineStatusTransport | null = null;
+
+  let metricHistory: MetricHistoryTransport[] | undefined;
 
   let machineLoadFailure: MachineLoadFailure | null = null;
 
   try {
     machineStatus = await loadMachineStatus('mixer-01');
+
+    if (loadMetricHistory !== undefined) {
+      metricHistory = await loadMetricHistory('mixer-01');
+    }
   } catch (error) {
     const isMachineNotFound =
       error instanceof MachineApiError && error.status === 404;
@@ -153,6 +166,7 @@ export async function renderDashboardPage({
           <>
             <MachineRealtimeDashboard
               initialMachineStatus={machineStatus}
+              initialMetricHistory={metricHistory}
               initialAlerts={ALERT_HISTORY}
             />
           </>
@@ -173,8 +187,20 @@ async function loadMachineStatusFromApi(
   return client.getMachineStatus(machineId);
 }
 
+async function loadMetricHistoryFromApi(
+  machineId: string,
+): Promise<MetricHistoryTransport[]> {
+  const client = createMachineApiClient({
+    baseUrl: process.env.API_BASE_URL ?? DEFAULT_API_BASE_URL,
+    fetch: globalThis.fetch,
+  });
+
+  return client.getMetricHistory(machineId);
+}
+
 export default async function Home() {
   return renderDashboardPage({
     loadMachineStatus: loadMachineStatusFromApi,
+    loadMetricHistory: loadMetricHistoryFromApi,
   });
 }
