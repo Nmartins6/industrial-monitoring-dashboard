@@ -64,6 +64,30 @@ const ALERT_LEVEL_ACCESSIBLE_LABELS: Record<AlertTransport['level'], string> = {
   CRITICAL: 'crítico',
 };
 
+const ALERT_COMPONENT_LABELS: Readonly<Record<string, string>> = {
+  'temperature-sensor': 'Sensor de temperatura',
+  motor: 'Motor',
+  'monitoring-system': 'Sistema de monitoramento',
+};
+
+function getAlertComponentLabel(component: string): string {
+  return ALERT_COMPONENT_LABELS[component] ?? component;
+}
+
+const ALERT_MESSAGE_LABELS: Readonly<Record<string, string>> = {
+  'Temperature exceeded the critical threshold':
+    'A temperatura excedeu o limite crítico',
+
+  'Motor vibration is above the recommended level':
+    'A vibração do motor está acima do nível recomendado',
+
+  'Machine monitoring started': 'Monitoramento da máquina iniciado',
+};
+
+function getAlertMessageLabel(message: string): string {
+  return ALERT_MESSAGE_LABELS[message] ?? message;
+}
+
 const METRIC_HISTORY_LIMIT = 30;
 
 const timeFormatter = new Intl.DateTimeFormat('pt-BR', {
@@ -287,6 +311,10 @@ export function MachineRealtimeDashboard({
               const accessibleLevelLabel =
                 ALERT_LEVEL_ACCESSIBLE_LABELS[alert.level];
 
+              const componentLabel = getAlertComponentLabel(alert.component);
+
+              const messageLabel = getAlertMessageLabel(alert.message);
+
               return (
                 <li
                   key={alert.id}
@@ -299,12 +327,12 @@ export function MachineRealtimeDashboard({
                           <p className="text-sm font-semibold">{levelLabel}</p>
 
                           <p className="text-xs text-slate-400">
-                            {alert.component}
+                            {componentLabel}
                           </p>
                         </div>
 
                         <p className="mt-2 text-sm text-slate-200">
-                          {alert.message}
+                          {messageLabel}
                         </p>
                       </div>
 
