@@ -94,6 +94,7 @@ describe('GET /api/v1/machines/:machineId/events', () => {
         {
           headers: {
             accept: 'text/event-stream',
+            origin: 'http://localhost:3000',
           },
           signal: abortController.signal,
         },
@@ -110,6 +111,12 @@ describe('GET /api/v1/machines/:machineId/events', () => {
       );
 
       expect(response.headers.get('cache-control')).toBe('no-cache');
+
+      expect(response.headers.get('access-control-allow-origin')).toBe(
+        'http://localhost:3000',
+      );
+
+      expect(response.headers.get('vary')).toContain('Origin');
 
       const frame = (await readFirstSseFrame(response)).replaceAll(
         '\r\n',

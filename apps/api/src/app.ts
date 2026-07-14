@@ -63,6 +63,8 @@ export interface CreateHttpServerOptions {
   machineConditionEvaluator?: MachineConditionEvaluator;
 }
 
+const DEFAULT_WEB_ORIGIN = 'http://localhost:3000';
+
 function sendJson(
   response: ServerResponse,
   statusCode: number,
@@ -183,7 +185,10 @@ export function handleRequest(
       emittedAt,
     });
 
-    openSseConnection(response);
+    openSseConnection(response, {
+      allowedOrigin: process.env.WEB_ORIGIN ?? DEFAULT_WEB_ORIGIN,
+    });
+
     writeSseEvent(response, connectedEvent);
 
     const scheduledTask = realtimeScheduler.scheduleEvery(3_000, () => {
