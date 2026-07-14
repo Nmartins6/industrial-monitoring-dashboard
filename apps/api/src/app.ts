@@ -65,6 +65,8 @@ export interface CreateHttpServerOptions {
 
 const DEFAULT_WEB_ORIGIN = 'http://localhost:3000';
 
+const CORS_ALLOWED_METHODS = 'GET, PATCH, OPTIONS';
+
 function sendJson(
   response: ServerResponse,
   statusCode: number,
@@ -138,6 +140,13 @@ export function handleRequest(
 ): void {
   const requestUrl = new URL(request.url ?? '/', 'http://localhost');
 
+  const allowedOrigin = process.env.WEB_ORIGIN ?? DEFAULT_WEB_ORIGIN;
+
+  if (request.headers.origin === allowedOrigin) {
+    response.setHeader('access-control-allow-origin', allowedOrigin);
+    response.setHeader('vary', 'Origin');
+  }
+
   if (request.method === 'GET' && requestUrl.pathname === '/health') {
     const healthResponse: HealthResponse = {
       status: 'ok',
@@ -186,7 +195,7 @@ export function handleRequest(
     });
 
     openSseConnection(response, {
-      allowedOrigin: process.env.WEB_ORIGIN ?? DEFAULT_WEB_ORIGIN,
+      allowedOrigin,
     });
 
     writeSseEvent(response, connectedEvent);
@@ -282,6 +291,14 @@ export function handleRequest(
   );
 
   if (alertAcknowledgementParameters !== undefined) {
+    if (request.method === 'OPTIONS') {
+      response.setHeader('access-control-allow-methods', CORS_ALLOWED_METHODS);
+
+      response.statusCode = 204;
+      response.end();
+      return;
+    }
+
     if (request.method !== 'PATCH') {
       response.setHeader('allow', 'PATCH');
 

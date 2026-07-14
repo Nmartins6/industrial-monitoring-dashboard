@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, jest } from '@jest/globals';
 import { act, render, screen, within } from '@testing-library/react';
 
 import type {
+  AlertTransport,
   AlertCreatedEvent,
   MachineStatusTransport,
   MetricHistoryTransport,
@@ -29,9 +30,37 @@ const DEFAULT_MACHINE_STATUS: MachineStatusTransport = {
   },
 };
 
+const DEFAULT_ALERT_HISTORY: AlertTransport[] = [
+  {
+    id: 'alert-003',
+    level: 'CRITICAL',
+    message: 'A temperatura excedeu o limite crítico',
+    component: 'Sensor de temperatura',
+    timestamp: '2026-07-12T10:00:12.000Z',
+    acknowledged: false,
+  },
+  {
+    id: 'alert-002',
+    level: 'WARNING',
+    message: 'A vibração do motor está acima do nível recomendado',
+    component: 'Motor',
+    timestamp: '2026-07-12T10:00:09.000Z',
+    acknowledged: false,
+  },
+  {
+    id: 'alert-001',
+    level: 'INFO',
+    message: 'Monitoramento da máquina iniciado',
+    component: 'Sistema de monitoramento',
+    timestamp: '2026-07-12T10:00:00.000Z',
+    acknowledged: true,
+  },
+];
+
 async function renderHome(): Promise<void> {
   const page = await renderDashboardPage({
     loadMachineStatus: async () => DEFAULT_MACHINE_STATUS,
+    loadAlertHistory: async () => DEFAULT_ALERT_HISTORY,
   });
 
   render(page);
@@ -419,6 +448,17 @@ describe('Home page', () => {
       },
     ];
 
+    const alertHistory: AlertTransport[] = [
+      {
+        id: 'alert-api-001',
+        level: 'CRITICAL',
+        message: 'Temperature exceeded the critical threshold',
+        component: 'temperature-sensor',
+        timestamp: '2026-07-13T16:30:00.000Z',
+        acknowledged: false,
+      },
+    ];
+
     const previousApiBaseUrl = process.env.API_BASE_URL;
     const previousFetch = globalThis.fetch;
 
@@ -454,6 +494,15 @@ describe('Home page', () => {
             status: 200,
             statusText: 'OK',
             json: async () => metricHistory,
+          } as Response;
+        }
+
+        if (url === 'http://api.example.test/api/v1/machines/mixer-01/alerts') {
+          return {
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: async () => alertHistory,
           } as Response;
         }
 
@@ -509,7 +558,23 @@ describe('Home page', () => {
 
       expect(metricHistoryRegion).toHaveTextContent('Última eficiência: 0%');
 
-      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const alertHistoryRegion = screen.getByRole('region', {
+        name: 'Histórico de alertas',
+      });
+
+      const alertItems = within(alertHistoryRegion).getAllByRole('listitem');
+
+      expect(alertItems).toHaveLength(1);
+
+      expect(alertHistoryRegion).toHaveTextContent(
+        'Temperature exceeded the critical threshold',
+      );
+
+      expect(alertHistoryRegion).toHaveTextContent('temperature-sensor');
+
+      expect(alertHistoryRegion).toHaveTextContent('Aguardando reconhecimento');
+
+      expect(fetchMock).toHaveBeenCalledTimes(3);
     } finally {
       if (previousApiBaseUrl === undefined) {
         delete process.env.API_BASE_URL;
@@ -722,5 +787,74 @@ describe('Home page', () => {
 
     expect(loadMachineStatus).toHaveBeenCalledTimes(1);
     expect(loadMetricHistory).toHaveBeenCalledTimes(1);
+  });
+
+  it('loads the initial alert history through the dashboard dependency', async () => {
+    const alertHistory: AlertTransport[] = [
+      {
+        id: 'alert-custom-001',
+        level: 'WARNING',
+        message: 'Pressure is above the recommended level',
+        component: 'pressure-sensor',
+        timestamp: '2026-07-14T18:00:00.000Z',
+        acknowledged: false,
+      },
+    ];
+
+    const loadMachineStatus = jest.fn(
+      async (machineId: string): Promise<MachineStatusTransport> => {
+        expect(machineId).toBe('mixer-01');
+
+        return DEFAULT_MACHINE_STATUS;
+      },
+    );
+
+    const loadAlertHistory = jest.fn(
+      async (machineId: string): Promise<AlertTransport[]> => {
+        expect(machineId).toBe('mixer-01');
+
+        return alertHistory;
+      },
+    );
+
+    const page = await renderDashboardPage({
+      loadMachineStatus,
+      loadAlertHistory,
+    });
+
+    render(page);
+
+    const alertHistoryRegion = screen.getByRole('region', {
+      name: 'Histórico de alertas',
+    });
+
+    const alertItems = within(alertHistoryRegion).getAllByRole('listitem');
+
+    expect(alertItems).toHaveLength(1);
+
+    expect(alertHistoryRegion).toHaveTextContent(
+      'Pressure is above the recommended level',
+    );
+
+    expect(alertHistoryRegion).toHaveTextContent('pressure-sensor');
+
+    expect(alertHistoryRegion).toHaveTextContent('Aguardando reconhecimento');
+
+    expect(loadMachineStatus).toHaveBeenCalledTimes(1);
+    expect(loadAlertHistory).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not render an alert history when no initial alerts are loaded', async () => {
+    const page = await renderDashboardPage({
+      loadMachineStatus: async () => DEFAULT_MACHINE_STATUS,
+    });
+
+    render(page);
+
+    expect(
+      screen.queryByRole('region', {
+        name: 'Histórico de alertas',
+      }),
+    ).not.toBeInTheDocument();
   });
 });

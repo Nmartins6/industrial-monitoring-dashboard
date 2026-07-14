@@ -1,8 +1,16 @@
 import { describe, expect, it, jest } from '@jest/globals';
-import { act, render, screen, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 
 import type {
   AlertCreatedEvent,
+  AlertTransport,
   AlertUpdatedEvent,
   ConnectedEvent,
   MachineStatusTransport,
@@ -542,6 +550,86 @@ describe('MachineRealtimeDashboard', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('acknowledges an unacknowledged alert through the dashboard action', async () => {
+    const initialMachineStatus: MachineStatusTransport = {
+      id: 'mixer-01',
+      timestamp: '2026-07-14T18:00:00.000Z',
+      state: 'RUNNING',
+      metrics: {
+        temperature: 82,
+        rpm: 1250,
+        uptime: 7200,
+        efficiency: 91,
+      },
+      oee: {
+        overall: 87,
+        availability: 95,
+        performance: 93,
+        quality: 98,
+      },
+    };
+
+    const alert: AlertTransport = {
+      id: 'alert-003',
+      level: 'CRITICAL',
+      message: 'Temperature exceeded the critical threshold',
+      component: 'temperature-sensor',
+      timestamp: '2026-07-14T18:00:00.000Z',
+      acknowledged: false,
+    };
+
+    const acknowledgedAlert: AlertTransport = {
+      ...alert,
+      acknowledged: true,
+    };
+
+    const acknowledgeAlert = jest.fn(
+      async (machineId: string, alertId: string): Promise<AlertTransport> => {
+        expect(machineId).toBe('mixer-01');
+        expect(alertId).toBe('alert-003');
+
+        return acknowledgedAlert;
+      },
+    );
+
+    render(
+      <MachineRealtimeDashboard
+        initialMachineStatus={initialMachineStatus}
+        initialAlerts={[alert]}
+        connectToMachine={() => jest.fn()}
+        acknowledgeAlert={acknowledgeAlert}
+      />,
+    );
+
+    const alertHistoryRegion = screen.getByRole('region', {
+      name: 'Histórico de alertas',
+    });
+
+    const alertItem = within(alertHistoryRegion).getByRole('listitem');
+
+    expect(alertItem).toHaveTextContent('Aguardando reconhecimento');
+
+    const acknowledgeButton = within(alertItem).getByRole('button', {
+      name: 'Reconhecer alerta crítico',
+    });
+
+    fireEvent.click(acknowledgeButton);
+
+    await waitFor(() => {
+      expect(acknowledgeAlert).toHaveBeenCalledTimes(1);
+    });
+
+    await waitFor(() => {
+      expect(alertItem).toHaveTextContent('Reconhecido');
+    });
+
+    expect(
+      within(alertItem).queryByRole('button', {
+        name: 'Reconhecer alerta crítico',
+      }),
+    ).not.toBeInTheDocument();
+  });
+
   it('renders a summary of the initial machine metric history', () => {
     const initialMachineStatus: MachineStatusTransport = {
       id: 'mixer-01',
@@ -815,5 +903,285 @@ describe('MachineRealtimeDashboard', () => {
     expect(metricHistoryRegion).toHaveTextContent('Última rotação: 1.350 RPM');
 
     expect(metricHistoryRegion).toHaveTextContent('Última eficiência: 96,5%');
+  });
+
+  it('disables the alert acknowledgement action while the request is pending', async () => {
+    const initialMachineStatus: MachineStatusTransport = {
+      id: 'mixer-01',
+      timestamp: '2026-07-14T18:00:00.000Z',
+      state: 'RUNNING',
+      metrics: {
+        temperature: 82,
+        rpm: 1250,
+        uptime: 7200,
+        efficiency: 91,
+      },
+      oee: {
+        overall: 87,
+        availability: 95,
+        performance: 93,
+        quality: 98,
+      },
+    };
+
+    const alert: AlertTransport = {
+      id: 'alert-003',
+      level: 'CRITICAL',
+      message: 'Temperature exceeded the critical threshold',
+      component: 'temperature-sensor',
+      timestamp: '2026-07-14T18:00:00.000Z',
+      acknowledged: false,
+    };
+
+    let resolveAcknowledgement: ((alert: AlertTransport) => void) | undefined;
+
+    const acknowledgeAlert = jest.fn(
+      async (): Promise<AlertTransport> =>
+        new Promise<AlertTransport>((resolve) => {
+          resolveAcknowledgement = resolve;
+        }),
+    );
+
+    render(
+      <MachineRealtimeDashboard
+        initialMachineStatus={initialMachineStatus}
+        initialAlerts={[alert]}
+        connectToMachine={() => jest.fn()}
+        acknowledgeAlert={acknowledgeAlert}
+      />,
+    );
+
+    const acknowledgeButton = screen.getByRole('button', {
+      name: 'Reconhecer alerta crítico',
+    });
+
+    fireEvent.click(acknowledgeButton);
+
+    await waitFor(() => {
+      expect(acknowledgeAlert).toHaveBeenCalledTimes(1);
+    });
+
+    expect(
+      screen.getByRole('button', {
+        name: 'Reconhecendo alerta crítico',
+      }),
+    ).toBeDisabled();
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Reconhecendo alerta crítico',
+      }),
+    );
+
+    expect(acknowledgeAlert).toHaveBeenCalledTimes(1);
+
+    if (resolveAcknowledgement === undefined) {
+      throw new Error('Acknowledgement request was not started');
+    }
+
+    const completeAcknowledgement = resolveAcknowledgement;
+
+    act(() => {
+      completeAcknowledgement({
+        ...alert,
+        acknowledged: true,
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Reconhecido')).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByRole('button', {
+        name: 'Reconhecendo alerta crítico',
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows an error and allows retry when alert acknowledgement fails', async () => {
+    const initialMachineStatus: MachineStatusTransport = {
+      id: 'mixer-01',
+      timestamp: '2026-07-14T18:00:00.000Z',
+      state: 'RUNNING',
+      metrics: {
+        temperature: 82,
+        rpm: 1250,
+        uptime: 7200,
+        efficiency: 91,
+      },
+      oee: {
+        overall: 87,
+        availability: 95,
+        performance: 93,
+        quality: 98,
+      },
+    };
+
+    const alert: AlertTransport = {
+      id: 'alert-003',
+      level: 'CRITICAL',
+      message: 'Temperature exceeded the critical threshold',
+      component: 'temperature-sensor',
+      timestamp: '2026-07-14T18:00:00.000Z',
+      acknowledged: false,
+    };
+
+    const acknowledgeAlert = jest
+      .fn<() => Promise<AlertTransport>>()
+      .mockRejectedValueOnce(new Error('API unavailable'))
+      .mockResolvedValueOnce({
+        ...alert,
+        acknowledged: true,
+      });
+
+    render(
+      <MachineRealtimeDashboard
+        initialMachineStatus={initialMachineStatus}
+        initialAlerts={[alert]}
+        connectToMachine={() => jest.fn()}
+        acknowledgeAlert={acknowledgeAlert}
+      />,
+    );
+
+    const alertItem = screen.getByRole('listitem');
+
+    const acknowledgeButton = within(alertItem).getByRole('button', {
+      name: 'Reconhecer alerta crítico',
+    });
+
+    fireEvent.click(acknowledgeButton);
+
+    expect(await within(alertItem).findByRole('alert')).toHaveTextContent(
+      'Não foi possível reconhecer o alerta. Tente novamente.',
+    );
+
+    expect(alertItem).toHaveTextContent('Aguardando reconhecimento');
+
+    const retryButton = within(alertItem).getByRole('button', {
+      name: 'Reconhecer alerta crítico',
+    });
+
+    expect(retryButton).toBeEnabled();
+
+    fireEvent.click(retryButton);
+
+    await waitFor(() => {
+      expect(alertItem).toHaveTextContent('Reconhecido');
+    });
+
+    expect(acknowledgeAlert).toHaveBeenCalledTimes(2);
+
+    expect(within(alertItem).queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('acknowledges an alert through the browser API client by default', async () => {
+    const initialMachineStatus: MachineStatusTransport = {
+      id: 'mixer-01',
+      timestamp: '2026-07-14T18:00:00.000Z',
+      state: 'RUNNING',
+      metrics: {
+        temperature: 82,
+        rpm: 1250,
+        uptime: 7200,
+        efficiency: 91,
+      },
+      oee: {
+        overall: 87,
+        availability: 95,
+        performance: 93,
+        quality: 98,
+      },
+    };
+
+    const alert: AlertTransport = {
+      id: 'alert-003',
+      level: 'CRITICAL',
+      message: 'Temperature exceeded the critical threshold',
+      component: 'temperature-sensor',
+      timestamp: '2026-07-14T18:00:00.000Z',
+      acknowledged: false,
+    };
+
+    const previousApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+    const previousFetch = globalThis.fetch;
+
+    process.env.NEXT_PUBLIC_API_BASE_URL = 'http://api.example.test';
+
+    const fetchMock = jest.fn(
+      async (
+        input: RequestInfo | URL,
+        init?: RequestInit,
+      ): Promise<Response> => {
+        expect(input).toBe(
+          'http://api.example.test/api/v1/machines/mixer-01/alerts/alert-003/acknowledge',
+        );
+
+        expect(init).toEqual({
+          method: 'PATCH',
+          headers: {
+            accept: 'application/json',
+          },
+        });
+
+        return {
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          json: async () => ({
+            ...alert,
+            acknowledged: true,
+          }),
+        } as Response;
+      },
+    );
+
+    Object.defineProperty(globalThis, 'fetch', {
+      configurable: true,
+      writable: true,
+      value: fetchMock,
+    });
+
+    try {
+      render(
+        <MachineRealtimeDashboard
+          initialMachineStatus={initialMachineStatus}
+          initialAlerts={[alert]}
+          connectToMachine={() => jest.fn()}
+        />,
+      );
+
+      const alertItem = screen.getByRole('listitem');
+
+      fireEvent.click(
+        within(alertItem).getByRole('button', {
+          name: 'Reconhecer alerta crítico',
+        }),
+      );
+
+      await waitFor(() => {
+        expect(alertItem).toHaveTextContent('Reconhecido');
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+
+      expect(
+        within(alertItem).queryByRole('button', {
+          name: 'Reconhecer alerta crítico',
+        }),
+      ).not.toBeInTheDocument();
+    } finally {
+      if (previousApiBaseUrl === undefined) {
+        delete process.env.NEXT_PUBLIC_API_BASE_URL;
+      } else {
+        process.env.NEXT_PUBLIC_API_BASE_URL = previousApiBaseUrl;
+      }
+
+      Object.defineProperty(globalThis, 'fetch', {
+        configurable: true,
+        writable: true,
+        value: previousFetch,
+      });
+    }
   });
 });

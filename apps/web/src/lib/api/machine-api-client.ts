@@ -1,4 +1,5 @@
 import type {
+  AlertTransport,
   MachineStatusTransport,
   MetricHistoryTransport,
 } from '@industrial-monitoring/contracts';
@@ -16,6 +17,9 @@ interface CreateMachineApiClientOptions {
 interface MachineApiClient {
   getMachineStatus(machineId: string): Promise<MachineStatusTransport>;
   getMetricHistory(machineId: string): Promise<MetricHistoryTransport[]>;
+  getAlertHistory(machineId: string): Promise<AlertTransport[]>;
+
+  acknowledgeAlert(machineId: string, alertId: string): Promise<AlertTransport>;
 }
 
 export class MachineApiError extends Error {
@@ -76,6 +80,51 @@ export function createMachineApiClient({
       }
 
       return response.json() as Promise<MetricHistoryTransport[]>;
+    },
+
+    async getAlertHistory(machineId: string): Promise<AlertTransport[]> {
+      const response = await fetch(
+        `${baseUrl}/api/v1/machines/${machineId}/alerts`,
+        {
+          cache: 'no-store',
+          headers: {
+            accept: 'application/json',
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new MachineApiError(
+          `Failed to load machine alert history: ${response.status} ${response.statusText}`,
+          response.status,
+        );
+      }
+
+      return response.json() as Promise<AlertTransport[]>;
+    },
+
+    async acknowledgeAlert(
+      machineId: string,
+      alertId: string,
+    ): Promise<AlertTransport> {
+      const response = await fetch(
+        `${baseUrl}/api/v1/machines/${machineId}/alerts/${alertId}/acknowledge`,
+        {
+          method: 'PATCH',
+          headers: {
+            accept: 'application/json',
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new MachineApiError(
+          `Failed to acknowledge machine alert: ${response.status} ${response.statusText}`,
+          response.status,
+        );
+      }
+
+      return response.json() as Promise<AlertTransport>;
     },
   };
 }

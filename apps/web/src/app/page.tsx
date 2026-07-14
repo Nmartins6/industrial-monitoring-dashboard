@@ -12,33 +12,6 @@ import {
 import { MachineDataRetry } from '@/components/machine-data-retry/machine-data-retry';
 import { MachineRealtimeDashboard } from '@/components/machine-realtime-dashboard/machine-realtime-dashboard';
 
-const ALERT_HISTORY: readonly AlertTransport[] = [
-  {
-    id: 'alert-003',
-    level: 'CRITICAL',
-    message: 'A temperatura excedeu o limite crítico',
-    component: 'Sensor de temperatura',
-    timestamp: '2026-07-12T10:00:12.000Z',
-    acknowledged: false,
-  },
-  {
-    id: 'alert-002',
-    level: 'WARNING',
-    message: 'A vibração do motor está acima do nível recomendado',
-    component: 'Motor',
-    timestamp: '2026-07-12T10:00:09.000Z',
-    acknowledged: false,
-  },
-  {
-    id: 'alert-001',
-    level: 'INFO',
-    message: 'Monitoramento da máquina iniciado',
-    component: 'Sistema de monitoramento',
-    timestamp: '2026-07-12T10:00:00.000Z',
-    acknowledged: true,
-  },
-] as const;
-
 const DEFAULT_API_BASE_URL = 'http://localhost:3333';
 
 type LoadMachineStatus = (machineId: string) => Promise<MachineStatusTransport>;
@@ -47,17 +20,21 @@ type LoadMetricHistory = (
   machineId: string,
 ) => Promise<MetricHistoryTransport[]>;
 
+type LoadAlertHistory = (machineId: string) => Promise<AlertTransport[]>;
+
 type MachineLoadFailure = 'not-found' | 'unavailable';
 
 interface RenderDashboardPageOptions {
   loadMachineStatus: LoadMachineStatus;
   loadMetricHistory?: LoadMetricHistory;
+  loadAlertHistory?: LoadAlertHistory;
   retryMachineData?: () => void;
 }
 
 export async function renderDashboardPage({
   loadMachineStatus,
   loadMetricHistory,
+  loadAlertHistory,
   retryMachineData,
 }: RenderDashboardPageOptions) {
   let machineStatus: MachineStatusTransport | null = null;
@@ -66,11 +43,17 @@ export async function renderDashboardPage({
 
   let machineLoadFailure: MachineLoadFailure | null = null;
 
+  let alertHistory: AlertTransport[] | undefined;
+
   try {
     machineStatus = await loadMachineStatus('mixer-01');
 
     if (loadMetricHistory !== undefined) {
       metricHistory = await loadMetricHistory('mixer-01');
+    }
+
+    if (loadAlertHistory !== undefined) {
+      alertHistory = await loadAlertHistory('mixer-01');
     }
   } catch (error) {
     const isMachineNotFound =
@@ -167,7 +150,7 @@ export async function renderDashboardPage({
             <MachineRealtimeDashboard
               initialMachineStatus={machineStatus}
               initialMetricHistory={metricHistory}
-              initialAlerts={ALERT_HISTORY}
+              initialAlerts={alertHistory}
             />
           </>
         )}
@@ -198,9 +181,21 @@ async function loadMetricHistoryFromApi(
   return client.getMetricHistory(machineId);
 }
 
+async function loadAlertHistoryFromApi(
+  machineId: string,
+): Promise<AlertTransport[]> {
+  const client = createMachineApiClient({
+    baseUrl: process.env.API_BASE_URL ?? DEFAULT_API_BASE_URL,
+    fetch: globalThis.fetch,
+  });
+
+  return client.getAlertHistory(machineId);
+}
+
 export default async function Home() {
   return renderDashboardPage({
     loadMachineStatus: loadMachineStatusFromApi,
     loadMetricHistory: loadMetricHistoryFromApi,
+    loadAlertHistory: loadAlertHistoryFromApi,
   });
 }

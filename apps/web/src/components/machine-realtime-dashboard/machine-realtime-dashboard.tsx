@@ -11,6 +11,7 @@ import type {
 
 import { MachineMetricHistory } from '@/components/machine-metric-history/machine-metric-history';
 import { MachineSnapshot } from '@/components/machine-snapshot/machine-snapshot';
+import { createMachineApiClient } from '@/lib/api/machine-api-client';
 import { createMachineRealtimeClient } from '@/lib/realtime/machine-realtime-client';
 
 type Disconnect = () => void;
@@ -30,11 +31,17 @@ type ConnectToMachine = (
   options: ConnectToMachineOptions,
 ) => Disconnect;
 
+type AcknowledgeAlert = (
+  machineId: string,
+  alertId: string,
+) => Promise<AlertTransport>;
+
 interface MachineRealtimeDashboardProps {
   initialMachineStatus: MachineStatusTransport;
   initialMetricHistory?: readonly MetricHistoryTransport[];
   initialAlerts?: readonly AlertTransport[];
   connectToMachine?: ConnectToMachine;
+  acknowledgeAlert?: AcknowledgeAlert;
 }
 
 const DEFAULT_API_BASE_URL = 'http://localhost:3333';
@@ -90,11 +97,24 @@ const connectWithBrowserEventSource: ConnectToMachine = (
   return client.connect(machineId, options);
 };
 
+const acknowledgeWithBrowserApi: AcknowledgeAlert = async (
+  machineId,
+  alertId,
+) => {
+  const client = createMachineApiClient({
+    baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL,
+    fetch: globalThis.fetch,
+  });
+
+  return client.acknowledgeAlert(machineId, alertId);
+};
+
 export function MachineRealtimeDashboard({
   initialMachineStatus,
   initialMetricHistory,
   initialAlerts,
   connectToMachine,
+  acknowledgeAlert,
 }: MachineRealtimeDashboardProps) {
   const [machineStatus, setMachineStatus] = useState(initialMachineStatus);
 
@@ -106,12 +126,72 @@ export function MachineRealtimeDashboard({
     ...(initialAlerts ?? []),
   ]);
 
+  const [acknowledgingAlertIds, setAcknowledgingAlertIds] = useState<
+    Set<string>
+  >(() => new Set());
+
+  const [acknowledgementErrorAlertIds, setAcknowledgementErrorAlertIds] =
+    useState<Set<string>>(() => new Set());
+
   const [connectionStatus, setConnectionStatus] =
     useState<DisplayConnectionStatus>('connecting');
 
   const isAlertHistoryEnabled = initialAlerts !== undefined;
 
   const isMetricHistoryEnabled = initialMetricHistory !== undefined;
+
+  const acknowledgeMachineAlert = acknowledgeAlert ?? acknowledgeWithBrowserApi;
+
+  async function handleAcknowledgeAlert(alertId: string): Promise<void> {
+    if (acknowledgingAlertIds.has(alertId)) {
+      return;
+    }
+
+    setAcknowledgementErrorAlertIds((currentAlertIds) => {
+      const nextAlertIds = new Set(currentAlertIds);
+
+      nextAlertIds.delete(alertId);
+
+      return nextAlertIds;
+    });
+
+    setAcknowledgingAlertIds((currentAlertIds) => {
+      const nextAlertIds = new Set(currentAlertIds);
+
+      nextAlertIds.add(alertId);
+
+      return nextAlertIds;
+    });
+
+    try {
+      const acknowledgedAlert = await acknowledgeMachineAlert(
+        initialMachineStatus.id,
+        alertId,
+      );
+
+      setAlerts((currentAlerts) =>
+        currentAlerts.map((alert) =>
+          alert.id === acknowledgedAlert.id ? acknowledgedAlert : alert,
+        ),
+      );
+    } catch {
+      setAcknowledgementErrorAlertIds((currentAlertIds) => {
+        const nextAlertIds = new Set(currentAlertIds);
+
+        nextAlertIds.add(alertId);
+
+        return nextAlertIds;
+      });
+    } finally {
+      setAcknowledgingAlertIds((currentAlertIds) => {
+        const nextAlertIds = new Set(currentAlertIds);
+
+        nextAlertIds.delete(alertId);
+
+        return nextAlertIds;
+      });
+    }
+  }
 
   useEffect(() => {
     const connect = connectToMachine ?? connectWithBrowserEventSource;
@@ -196,6 +276,12 @@ export function MachineRealtimeDashboard({
 
           <ul className="mt-4 space-y-3">
             {alerts.map((alert) => {
+              const isAcknowledging = acknowledgingAlertIds.has(alert.id);
+
+              const hasAcknowledgementError = acknowledgementErrorAlertIds.has(
+                alert.id,
+              );
+
               const levelLabel = ALERT_LEVEL_LABELS[alert.level];
 
               const accessibleLevelLabel =
@@ -231,11 +317,38 @@ export function MachineRealtimeDashboard({
                       </time>
                     </div>
 
-                    <p className="mt-3 text-xs text-slate-500">
-                      {alert.acknowledged
-                        ? 'Reconhecido'
-                        : 'Aguardando reconhecimento'}
-                    </p>
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-xs text-slate-500">
+                        {alert.acknowledged
+                          ? 'Reconhecido'
+                          : 'Aguardando reconhecimento'}
+                      </p>
+
+                      {!alert.acknowledged ? (
+                        <button
+                          type="button"
+                          aria-label={`${
+                            isAcknowledging ? 'Reconhecendo' : 'Reconhecer'
+                          } alerta ${accessibleLevelLabel}`}
+                          aria-busy={isAcknowledging}
+                          disabled={isAcknowledging}
+                          className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm font-medium text-slate-100 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          onClick={() => {
+                            void handleAcknowledgeAlert(alert.id);
+                          }}
+                        >
+                          {isAcknowledging
+                            ? 'Reconhecendo...'
+                            : 'Reconhecer alerta'}
+                        </button>
+                      ) : null}
+                    </div>
+
+                    {hasAcknowledgementError ? (
+                      <p role="alert">
+                        Não foi possível reconhecer o alerta. Tente novamente.
+                      </p>
+                    ) : null}
                   </article>
                 </li>
               );

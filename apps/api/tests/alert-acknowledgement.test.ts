@@ -11,7 +11,7 @@ interface ErrorResponse {
   error: string;
 }
 
-describe('PATCH /api/v1/machines/:machineId/alerts/:alertId/acknowledge', () => {
+describe('/api/v1/machines/:machineId/alerts/:alertId/acknowledge', () => {
   let server: Server;
   let baseUrl: string;
 
@@ -41,6 +41,33 @@ describe('PATCH /api/v1/machines/:machineId/alerts/:alertId/acknowledge', () => 
         resolve();
       });
     });
+  });
+
+  it('allows the frontend origin to preflight the acknowledgement request', async () => {
+    const response = await fetch(
+      `${baseUrl}/api/v1/machines/mixer-01/alerts/alert-002/acknowledge`,
+      {
+        method: 'OPTIONS',
+        headers: {
+          origin: 'http://localhost:3000',
+          'access-control-request-method': 'PATCH',
+        },
+      },
+    );
+
+    expect(response.status).toBe(204);
+
+    expect(response.headers.get('access-control-allow-origin')).toBe(
+      'http://localhost:3000',
+    );
+
+    expect(response.headers.get('access-control-allow-methods')).toBe(
+      'GET, PATCH, OPTIONS',
+    );
+
+    expect(response.headers.get('vary')).toBe('Origin');
+
+    expect(await response.text()).toBe('');
   });
 
   it('acknowledges an existing alert and persists the change', async () => {
