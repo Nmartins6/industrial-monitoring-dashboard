@@ -5,9 +5,11 @@ import { useEffect, useState } from 'react';
 import type {
   AlertTransport,
   MachineStatusTransport,
+  MetricHistoryTransport,
   RealtimeEvent,
 } from '@industrial-monitoring/contracts';
 
+import { MachineMetricHistory } from '@/components/machine-metric-history/machine-metric-history';
 import { MachineSnapshot } from '@/components/machine-snapshot/machine-snapshot';
 import { createMachineRealtimeClient } from '@/lib/realtime/machine-realtime-client';
 
@@ -30,6 +32,7 @@ type ConnectToMachine = (
 
 interface MachineRealtimeDashboardProps {
   initialMachineStatus: MachineStatusTransport;
+  initialMetricHistory?: readonly MetricHistoryTransport[];
   initialAlerts?: readonly AlertTransport[];
   connectToMachine?: ConnectToMachine;
 }
@@ -53,6 +56,8 @@ const ALERT_LEVEL_ACCESSIBLE_LABELS: Record<AlertTransport['level'], string> = {
   WARNING: 'de aviso',
   CRITICAL: 'crítico',
 };
+
+const METRIC_HISTORY_LIMIT = 30;
 
 const timeFormatter = new Intl.DateTimeFormat('pt-BR', {
   hour: '2-digit',
@@ -87,10 +92,15 @@ const connectWithBrowserEventSource: ConnectToMachine = (
 
 export function MachineRealtimeDashboard({
   initialMachineStatus,
+  initialMetricHistory,
   initialAlerts,
   connectToMachine,
 }: MachineRealtimeDashboardProps) {
   const [machineStatus, setMachineStatus] = useState(initialMachineStatus);
+
+  const [metricHistory, setMetricHistory] = useState<MetricHistoryTransport[]>(
+    () => [...(initialMetricHistory ?? [])].slice(-METRIC_HISTORY_LIMIT),
+  );
 
   const [alerts, setAlerts] = useState<AlertTransport[]>(() => [
     ...(initialAlerts ?? []),
@@ -101,6 +111,8 @@ export function MachineRealtimeDashboard({
 
   const isAlertHistoryEnabled = initialAlerts !== undefined;
 
+  const isMetricHistoryEnabled = initialMetricHistory !== undefined;
+
   useEffect(() => {
     const connect = connectToMachine ?? connectWithBrowserEventSource;
 
@@ -108,6 +120,16 @@ export function MachineRealtimeDashboard({
       onEvent(event) {
         if (event.type === 'MACHINE_STATUS_UPDATED') {
           setMachineStatus(event.payload);
+
+          return;
+        }
+
+        if (event.type === 'METRIC_RECORDED') {
+          setMetricHistory((currentMetricHistory) =>
+            [...currentMetricHistory, event.payload].slice(
+              -METRIC_HISTORY_LIMIT,
+            ),
+          );
 
           return;
         }
@@ -149,6 +171,10 @@ export function MachineRealtimeDashboard({
       </div>
 
       <MachineSnapshot machineStatus={machineStatus} />
+
+      {isMetricHistoryEnabled ? (
+        <MachineMetricHistory metricHistory={metricHistory} />
+      ) : null}
 
       {isAlertHistoryEnabled ? (
         <section

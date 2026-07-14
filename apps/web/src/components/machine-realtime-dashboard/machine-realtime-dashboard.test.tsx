@@ -7,6 +7,8 @@ import type {
   ConnectedEvent,
   MachineStatusTransport,
   MachineStatusUpdatedEvent,
+  MetricHistoryTransport,
+  MetricRecordedEvent,
   RealtimeEvent,
 } from '@industrial-monitoring/contracts';
 
@@ -538,5 +540,280 @@ describe('MachineRealtimeDashboard', () => {
     expect(
       within(alertHistory).queryByText('Aguardando reconhecimento'),
     ).not.toBeInTheDocument();
+  });
+
+  it('renders a summary of the initial machine metric history', () => {
+    const initialMachineStatus: MachineStatusTransport = {
+      id: 'mixer-01',
+      timestamp: '2026-07-13T19:00:03.000Z',
+      state: 'RUNNING',
+      metrics: {
+        temperature: 73,
+        rpm: 1220,
+        uptime: 3664,
+        efficiency: 93,
+      },
+      oee: {
+        overall: 88,
+        availability: 95,
+        performance: 94,
+        quality: 98,
+      },
+    };
+
+    const initialMetricHistory: MetricHistoryTransport[] = [
+      {
+        timestamp: '2026-07-13T19:00:00.000Z',
+        temperature: 72,
+        rpm: 1200,
+        efficiency: 92,
+      },
+      {
+        timestamp: '2026-07-13T19:00:03.000Z',
+        temperature: 73,
+        rpm: 1220,
+        efficiency: 93,
+      },
+    ];
+
+    const connectToMachine = jest.fn(() => jest.fn());
+
+    render(
+      <MachineRealtimeDashboard
+        initialMachineStatus={initialMachineStatus}
+        initialMetricHistory={initialMetricHistory}
+        connectToMachine={connectToMachine}
+      />,
+    );
+
+    const metricHistoryRegion = screen.getByRole('region', {
+      name: 'Histórico de métricas',
+    });
+
+    expect(
+      within(metricHistoryRegion).getByRole('heading', {
+        level: 2,
+        name: 'Histórico de métricas',
+      }),
+    ).toBeInTheDocument();
+
+    expect(metricHistoryRegion).toHaveTextContent('2 medições no período');
+
+    expect(metricHistoryRegion).toHaveTextContent('Última temperatura: 73 °C');
+
+    expect(metricHistoryRegion).toHaveTextContent('Última rotação: 1.220 RPM');
+
+    expect(metricHistoryRegion).toHaveTextContent('Última eficiência: 93%');
+
+    expect(
+      within(metricHistoryRegion).getByRole('figure', {
+        name: 'Histórico de temperatura',
+      }),
+    ).toBeInTheDocument();
+
+    expect(
+      within(metricHistoryRegion).getByRole('figure', {
+        name: 'Histórico de rotação',
+      }),
+    ).toBeInTheDocument();
+
+    expect(
+      within(metricHistoryRegion).getByRole('figure', {
+        name: 'Histórico de eficiência',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('adds a metric received in real time to the history', () => {
+    const initialMachineStatus: MachineStatusTransport = {
+      id: 'mixer-01',
+      timestamp: '2026-07-13T19:00:03.000Z',
+      state: 'RUNNING',
+      metrics: {
+        temperature: 73,
+        rpm: 1220,
+        uptime: 3664,
+        efficiency: 93,
+      },
+      oee: {
+        overall: 88,
+        availability: 95,
+        performance: 94,
+        quality: 98,
+      },
+    };
+
+    const initialMetricHistory: MetricHistoryTransport[] = [
+      {
+        timestamp: '2026-07-13T19:00:00.000Z',
+        temperature: 72,
+        rpm: 1200,
+        efficiency: 92,
+      },
+      {
+        timestamp: '2026-07-13T19:00:03.000Z',
+        temperature: 73,
+        rpm: 1220,
+        efficiency: 93,
+      },
+    ];
+
+    let onEvent: ((event: RealtimeEvent) => void) | undefined;
+
+    const connectToMachine = jest.fn(
+      (
+        machineId: string,
+        options: {
+          onEvent(event: RealtimeEvent): void;
+        },
+      ) => {
+        expect(machineId).toBe('mixer-01');
+
+        onEvent = options.onEvent;
+
+        return jest.fn();
+      },
+    );
+
+    render(
+      <MachineRealtimeDashboard
+        initialMachineStatus={initialMachineStatus}
+        initialMetricHistory={initialMetricHistory}
+        connectToMachine={connectToMachine}
+      />,
+    );
+
+    const metricHistoryRegion = screen.getByRole('region', {
+      name: 'Histórico de métricas',
+    });
+
+    expect(metricHistoryRegion).toHaveTextContent('2 medições no período');
+
+    if (onEvent === undefined) {
+      throw new Error('Realtime event listener was not registered');
+    }
+
+    const emitRealtimeEvent = onEvent;
+
+    const metricRecordedEvent: MetricRecordedEvent = {
+      id: 'event-metric-001',
+      emittedAt: '2026-07-13T19:00:06.000Z',
+      type: 'METRIC_RECORDED',
+      payload: {
+        timestamp: '2026-07-13T19:00:06.000Z',
+        temperature: 74.5,
+        rpm: 1240,
+        efficiency: 94.2,
+      },
+    };
+
+    act(() => {
+      emitRealtimeEvent(metricRecordedEvent);
+    });
+
+    expect(metricHistoryRegion).toHaveTextContent('3 medições no período');
+
+    expect(metricHistoryRegion).toHaveTextContent(
+      'Última temperatura: 74,5 °C',
+    );
+
+    expect(metricHistoryRegion).toHaveTextContent('Última rotação: 1.240 RPM');
+
+    expect(metricHistoryRegion).toHaveTextContent('Última eficiência: 94,2%');
+
+    expect(connectToMachine).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps only the 30 most recent metric history entries', () => {
+    const initialMachineStatus: MachineStatusTransport = {
+      id: 'mixer-01',
+      timestamp: '2026-07-13T19:01:27.000Z',
+      state: 'RUNNING',
+      metrics: {
+        temperature: 79,
+        rpm: 1290,
+        uptime: 3748,
+        efficiency: 99,
+      },
+      oee: {
+        overall: 90,
+        availability: 95,
+        performance: 96,
+        quality: 98,
+      },
+    };
+
+    const initialMetricHistory: MetricHistoryTransport[] = Array.from(
+      { length: 30 },
+      (_, index) => ({
+        timestamp: new Date(
+          Date.parse('2026-07-13T19:00:00.000Z') + index * 3000,
+        ).toISOString(),
+        temperature: 70 + index,
+        rpm: 1000 + index * 10,
+        efficiency: 80 + index,
+      }),
+    );
+
+    let onEvent: ((event: RealtimeEvent) => void) | undefined;
+
+    const connectToMachine = jest.fn(
+      (
+        _machineId: string,
+        options: {
+          onEvent(event: RealtimeEvent): void;
+        },
+      ) => {
+        onEvent = options.onEvent;
+
+        return jest.fn();
+      },
+    );
+
+    render(
+      <MachineRealtimeDashboard
+        initialMachineStatus={initialMachineStatus}
+        initialMetricHistory={initialMetricHistory}
+        connectToMachine={connectToMachine}
+      />,
+    );
+
+    const metricHistoryRegion = screen.getByRole('region', {
+      name: 'Histórico de métricas',
+    });
+
+    expect(metricHistoryRegion).toHaveTextContent('30 medições no período');
+
+    if (onEvent === undefined) {
+      throw new Error('Realtime event listener was not registered');
+    }
+
+    const emitRealtimeEvent = onEvent;
+
+    const metricRecordedEvent: MetricRecordedEvent = {
+      id: 'event-metric-limit-001',
+      emittedAt: '2026-07-13T19:01:30.000Z',
+      type: 'METRIC_RECORDED',
+      payload: {
+        timestamp: '2026-07-13T19:01:30.000Z',
+        temperature: 82.5,
+        rpm: 1350,
+        efficiency: 96.5,
+      },
+    };
+
+    act(() => {
+      emitRealtimeEvent(metricRecordedEvent);
+    });
+
+    expect(metricHistoryRegion).toHaveTextContent('30 medições no período');
+
+    expect(metricHistoryRegion).toHaveTextContent(
+      'Última temperatura: 82,5 °C',
+    );
+
+    expect(metricHistoryRegion).toHaveTextContent('Última rotação: 1.350 RPM');
+
+    expect(metricHistoryRegion).toHaveTextContent('Última eficiência: 96,5%');
   });
 });
