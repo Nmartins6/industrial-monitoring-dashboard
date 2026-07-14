@@ -21,6 +21,12 @@ const ALERT_LEVEL_ACCESSIBLE_LABELS: Readonly<
   CRITICAL: 'crítico',
 };
 
+const ALERT_LEVEL_STYLES: Readonly<Record<AlertTransport['level'], string>> = {
+  INFO: 'border-sky-800 bg-sky-950/30',
+  WARNING: 'border-amber-800 bg-amber-950/30',
+  CRITICAL: 'border-red-800 bg-red-950/30',
+};
+
 const ALERT_COMPONENT_LABELS: Readonly<Record<string, string>> = {
   'temperature-sensor': 'Sensor de temperatura',
   motor: 'Motor',
@@ -89,6 +95,8 @@ export function MachineAlertHistory({
           const accessibleLevelLabel =
             ALERT_LEVEL_ACCESSIBLE_LABELS[alert.level];
 
+          const levelStyle = ALERT_LEVEL_STYLES[alert.level];
+
           const componentLabel = getAlertComponentLabel(alert.component);
 
           const messageLabel = getAlertMessageLabel(alert.message);
@@ -96,7 +104,8 @@ export function MachineAlertHistory({
           return (
             <li
               key={alert.id}
-              className="rounded-xl border border-slate-800 bg-slate-900 p-5"
+              data-alert-level={alert.level}
+              className={`rounded-xl border p-5 ${levelStyle}`}
             >
               <article>
                 <div className="flex flex-wrap items-start justify-between gap-4">

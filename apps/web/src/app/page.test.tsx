@@ -106,7 +106,7 @@ class FakePageEventSource {
     listener.handleEvent(messageEvent);
   }
 
-  close(): void { }
+  close(): void {}
 }
 
 const previousEventSource = globalThis.EventSource;
@@ -576,9 +576,7 @@ describe('Home page', () => {
 
       expect(alertHistoryRegion).toHaveTextContent('Sensor de temperatura');
 
-      expect(alertHistoryRegion).not.toHaveTextContent(
-        'temperature-sensor',
-      );
+      expect(alertHistoryRegion).not.toHaveTextContent('temperature-sensor');
 
       expect(alertHistoryRegion).toHaveTextContent('Aguardando reconhecimento');
 
