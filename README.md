@@ -6,7 +6,13 @@ O projeto atende ao desafio técnico com monorepo TypeScript, API Node.js, front
 
 ## Demonstração
 
-O desafio exige vídeo ou screenshots reais da aplicação funcionando. Nenhum arquivo real de demonstração foi encontrado em `docs/assets`, então este item permanece pendente até que a mídia seja adicionada ao repositório.
+O vídeo real de demonstração da aplicação está em:
+
+```text
+docs/assets/resolucao-desafio.mp4
+```
+
+Link direto: [resolucao-desafio.mp4](docs/assets/resolucao-desafio.mp4).
 
 ## Funcionalidades implementadas
 
@@ -212,10 +218,10 @@ O banco é criado automaticamente quando a API sobe com `DATABASE_PATH` padrão.
 - [TypeScript config](packages/typescript-config/README.md)
 - [Decisões técnicas](docs/TECHNICAL_DECISIONS.md)
 - [Matriz de requisitos](docs/REQUIREMENTS.md)
+- [Vídeo de demonstração](docs/assets/resolucao-desafio.mp4)
 
 ## Limitações atuais
 
-- A demonstração por vídeo ou screenshots reais ainda precisa ser adicionada.
 - Apenas `mixer-01` possui dados mockados.
 - Histórico persistente cobre alertas; métricas históricas ainda são dados simulados/estáticos.
 - Não há autenticação.

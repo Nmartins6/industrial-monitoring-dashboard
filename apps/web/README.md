@@ -190,6 +190,14 @@ pnpm --filter @industrial-monitoring/web lint
 pnpm --filter @industrial-monitoring/web storybook:build
 ```
 
+## Demonstração
+
+O vídeo real da aplicação funcionando está em:
+
+```text
+../../docs/assets/resolucao-desafio.mp4
+```
+
 ## Decisões relevantes
 
 - Snapshot inicial por HTTP e atualizações por SSE.
@@ -212,4 +220,4 @@ pnpm --filter @industrial-monitoring/web storybook:build
 - Múltiplas máquinas.
 - Preferências avançadas por usuário.
 - Maior isolamento de componentes visuais.
-- Screenshots reais em `docs/assets` para a entrega do desafio.
+- Novos cenários de demonstração quando houver suporte a múltiplas máquinas.

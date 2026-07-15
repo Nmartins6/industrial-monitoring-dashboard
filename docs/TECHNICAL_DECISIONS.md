@@ -429,7 +429,7 @@ Adicionar esses itens agora.
 Mantém escopo focado nos requisitos obrigatórios.
 
 **Trade-offs e limitações**  
-A entrega ainda depende de screenshots ou vídeo real para demonstração final.
+Extras como E2E, offline e múltiplas máquinas seguem fora do escopo desta entrega.
 
 **Consequências**  
 Esses itens ficam documentados como evolução futura, não como funcionalidade pronta.
