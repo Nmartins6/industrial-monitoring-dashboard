@@ -50,18 +50,18 @@ function MetricLineChart({
           left: -12,
         }}
       >
-        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
 
         <XAxis
           dataKey="time"
           minTickGap={24}
           tick={{
-            fill: '#94a3b8',
+            fill: 'var(--muted)',
             fontSize: 12,
           }}
           tickLine={false}
           axisLine={{
-            stroke: '#475569',
+            stroke: 'var(--border-strong)',
           }}
         />
 
@@ -69,12 +69,12 @@ function MetricLineChart({
           width={48}
           domain={['auto', 'auto']}
           tick={{
-            fill: '#94a3b8',
+            fill: 'var(--muted)',
             fontSize: 12,
           }}
           tickLine={false}
           axisLine={{
-            stroke: '#475569',
+            stroke: 'var(--border-strong)',
           }}
         />
 
@@ -124,34 +124,34 @@ export function MachineMetricHistory({
           Histórico de métricas
         </h2>
 
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-muted">
           {metricHistory.length}{' '}
           {metricHistory.length === 1 ? 'medição' : 'medições'} no período
         </p>
       </div>
 
       {latestMetric === undefined ? (
-        <p className="mt-4 rounded-xl border border-slate-800 bg-slate-900 p-5 text-sm text-slate-400">
+        <p className="mt-4 rounded-xl border border-border bg-surface p-5 text-sm text-muted">
           Nenhuma medição disponível.
         </p>
       ) : (
         <>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <p className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm text-slate-200">
+            <p className="rounded-lg border border-border bg-surface p-4 text-sm text-foreground">
               Última temperatura:{' '}
               <strong>
                 {metricNumberFormatter.format(latestMetric.temperature)} °C
               </strong>
             </p>
 
-            <p className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm text-slate-200">
+            <p className="rounded-lg border border-border bg-surface p-4 text-sm text-foreground">
               Última rotação:{' '}
               <strong>
                 {metricNumberFormatter.format(latestMetric.rpm)} RPM
               </strong>
             </p>
 
-            <p className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm text-slate-200">
+            <p className="rounded-lg border border-border bg-surface p-4 text-sm text-foreground">
               Última eficiência:{' '}
               <strong>
                 {metricNumberFormatter.format(latestMetric.efficiency)}%
@@ -162,7 +162,7 @@ export function MachineMetricHistory({
           <div className="mt-4 grid gap-4 lg:grid-cols-3">
             <figure
               aria-labelledby="temperature-history-title"
-              className="rounded-xl border border-slate-800 bg-slate-900 p-5"
+              className="rounded-xl border border-border bg-surface p-5 text-foreground"
             >
               <figcaption
                 id="temperature-history-title"
@@ -176,13 +176,13 @@ export function MachineMetricHistory({
                 dataKey="temperature"
                 accessibleLabel="Gráfico de temperatura ao longo do tempo"
                 lineLabel="Temperatura"
-                stroke="#f97316"
+                stroke="var(--warning)"
               />
             </figure>
 
             <figure
               aria-labelledby="rotation-history-title"
-              className="rounded-xl border border-slate-800 bg-slate-900 p-5"
+              className="rounded-xl border border-border bg-surface p-5 text-foreground"
             >
               <figcaption id="rotation-history-title" className="font-semibold">
                 Histórico de rotação
@@ -193,13 +193,13 @@ export function MachineMetricHistory({
                 dataKey="rpm"
                 accessibleLabel="Gráfico de rotação ao longo do tempo"
                 lineLabel="Rotação"
-                stroke="#38bdf8"
+                stroke="var(--info)"
               />
             </figure>
 
             <figure
               aria-labelledby="efficiency-history-title"
-              className="rounded-xl border border-slate-800 bg-slate-900 p-5"
+              className="rounded-xl border border-border bg-surface p-5 text-foreground"
             >
               <figcaption
                 id="efficiency-history-title"
@@ -213,7 +213,7 @@ export function MachineMetricHistory({
                 dataKey="efficiency"
                 accessibleLabel="Gráfico de eficiência ao longo do tempo"
                 lineLabel="Eficiência"
-                stroke="#22c55e"
+                stroke="var(--success)"
               />
             </figure>
           </div>
