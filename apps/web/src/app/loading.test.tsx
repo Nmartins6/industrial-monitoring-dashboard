@@ -23,8 +23,17 @@ describe('Dashboard loading state', () => {
     const headerContent = dashboardHeader.firstElementChild;
 
     expect(headerContent).not.toBeNull();
-    expect(headerContent).toHaveClass('px-6', 'py-5');
 
+    expect(headerContent).toHaveClass(
+      'flex-col',
+      'items-stretch',
+      'gap-4',
+      'px-6',
+      'py-5',
+      'sm:flex-row',
+      'sm:items-center',
+      'sm:justify-between',
+    );
     expect(
       within(dashboardHeader).getByText('Monitoramento de máquinas'),
     ).toHaveClass('text-muted');
@@ -34,11 +43,13 @@ describe('Dashboard loading state', () => {
         level: 1,
         name: 'Painel de Monitoramento Industrial',
       }),
-    ).toHaveClass('text-foreground');
+    ).toHaveClass('text-xl', 'text-foreground', 'sm:text-2xl');
 
     const loadingStatus = screen.getByRole('status', {
       name: 'Carregando dados da máquina',
     });
+
+    expect(loadingStatus).toHaveClass('self-start');
 
     expect(loadingStatus).toHaveTextContent('Carregando dados da máquina...');
 
