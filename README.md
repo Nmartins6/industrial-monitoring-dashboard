@@ -13,6 +13,7 @@ docs/assets/resolucao-desafio.mp4
 ```
 
 Link direto: [resolucao-desafio.mp4](docs/assets/resolucao-desafio.mp4).
+Backup no YouTube: [https://www.youtube.com/watch?v=6wfyY_Qppw8](https://www.youtube.com/watch?v=6wfyY_Qppw8).
 
 ## Funcionalidades implementadas
 
@@ -219,6 +220,7 @@ O banco é criado automaticamente quando a API sobe com `DATABASE_PATH` padrão.
 - [Decisões técnicas](docs/TECHNICAL_DECISIONS.md)
 - [Matriz de requisitos](docs/REQUIREMENTS.md)
 - [Vídeo de demonstração](docs/assets/resolucao-desafio.mp4)
+- [Backup do vídeo no YouTube](https://www.youtube.com/watch?v=6wfyY_Qppw8)
 
 ## Limitações atuais
 

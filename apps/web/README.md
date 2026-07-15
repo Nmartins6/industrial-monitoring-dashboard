@@ -198,6 +198,9 @@ O vídeo real da aplicação funcionando está em:
 ../../docs/assets/resolucao-desafio.mp4
 ```
 
+Backup no YouTube:
+[https://www.youtube.com/watch?v=6wfyY_Qppw8](https://www.youtube.com/watch?v=6wfyY_Qppw8).
+
 ## Decisões relevantes
 
 - Snapshot inicial por HTTP e atualizações por SSE.
