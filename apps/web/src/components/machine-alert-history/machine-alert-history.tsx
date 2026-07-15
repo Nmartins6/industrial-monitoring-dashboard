@@ -63,10 +63,6 @@ export function MachineAlertHistory({
   acknowledgementErrorAlertIds,
   onAcknowledgeAlert,
 }: MachineAlertHistoryProps) {
-  if (alerts.length === 0) {
-    return null;
-  }
-
   return (
     <section
       aria-label="Histórico de alertas"
@@ -82,106 +78,113 @@ export function MachineAlertHistory({
         </p>
       </div>
 
-      <ul className="mt-4 space-y-3">
-        {alerts.map((alert) => {
-          const isUnacknowledgedCritical =
-            alert.level === 'CRITICAL' && !alert.acknowledged;
+      {alerts.length === 0 ? (
+        <p className="mt-4 rounded-xl border border-border bg-surface-secondary p-5 text-sm text-muted">
+          Nenhum alerta registrado.
+        </p>
+      ) : (
+        <ul className="mt-4 space-y-3">
+          {alerts.map((alert) => {
+            const isUnacknowledgedCritical =
+              alert.level === 'CRITICAL' && !alert.acknowledged;
 
-          const isAcknowledging = acknowledgingAlertIds.has(alert.id);
+            const isAcknowledging = acknowledgingAlertIds.has(alert.id);
 
-          const hasAcknowledgementError = acknowledgementErrorAlertIds.has(
-            alert.id,
-          );
+            const hasAcknowledgementError = acknowledgementErrorAlertIds.has(
+              alert.id,
+            );
 
-          const levelLabel = ALERT_LEVEL_LABELS[alert.level];
+            const levelLabel = ALERT_LEVEL_LABELS[alert.level];
 
-          const accessibleLevelLabel =
-            ALERT_LEVEL_ACCESSIBLE_LABELS[alert.level];
+            const accessibleLevelLabel =
+              ALERT_LEVEL_ACCESSIBLE_LABELS[alert.level];
 
-          const levelStyle = ALERT_LEVEL_STYLES[alert.level];
+            const levelStyle = ALERT_LEVEL_STYLES[alert.level];
 
-          const componentLabel = getAlertComponentLabel(alert.component);
+            const componentLabel = getAlertComponentLabel(alert.component);
 
-          const messageLabel = getAlertMessageLabel(alert.message);
+            const messageLabel = getAlertMessageLabel(alert.message);
 
-          return (
-            <li
-              key={alert.id}
-              data-alert-level={alert.level}
-              className={`rounded-xl border p-5 ${levelStyle} ${
-                isUnacknowledgedCritical ? 'ring-2 ring-danger/40' : ''
-              }`}
-            >
-              <article>
-                {isUnacknowledgedCritical ? (
-                  <p
-                    role="status"
-                    aria-label="Alerta crítico não reconhecido"
-                    aria-live="assertive"
-                    className="mb-4 inline-flex rounded-full border border-danger/30 bg-danger/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-danger"
-                  >
-                    Alerta crítico
-                  </p>
-                ) : null}
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <p className="text-sm font-semibold">{levelLabel}</p>
+            return (
+              <li
+                key={alert.id}
+                data-alert-level={alert.level}
+                className={`rounded-xl border p-5 ${levelStyle} ${
+                  isUnacknowledgedCritical ? 'ring-2 ring-danger/40' : ''
+                }`}
+              >
+                <article>
+                  {isUnacknowledgedCritical ? (
+                    <p
+                      role="status"
+                      aria-label="Alerta crítico não reconhecido"
+                      aria-live="assertive"
+                      className="mb-4 inline-flex rounded-full border border-danger/30 bg-danger/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-danger"
+                    >
+                      Alerta crítico
+                    </p>
+                  ) : null}
 
-                      <p className="text-xs text-muted">{componentLabel}</p>
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <p className="text-sm font-semibold">{levelLabel}</p>
+
+                        <p className="text-xs text-muted">{componentLabel}</p>
+                      </div>
+
+                      <p className="mt-2 text-sm text-foreground">
+                        {messageLabel}
+                      </p>
                     </div>
 
-                    <p className="mt-2 text-sm text-foreground">
-                      {messageLabel}
-                    </p>
+                    <time
+                      aria-label={`Horário do alerta ${accessibleLevelLabel}`}
+                      dateTime={alert.timestamp}
+                      className="text-sm text-muted"
+                    >
+                      {timeFormatter.format(new Date(alert.timestamp))}
+                    </time>
                   </div>
 
-                  <time
-                    aria-label={`Horário do alerta ${accessibleLevelLabel}`}
-                    dateTime={alert.timestamp}
-                    className="text-sm text-muted"
-                  >
-                    {timeFormatter.format(new Date(alert.timestamp))}
-                  </time>
-                </div>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-xs text-muted">
+                      {alert.acknowledged
+                        ? 'Reconhecido'
+                        : 'Aguardando reconhecimento'}
+                    </p>
 
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-xs text-muted">
-                    {alert.acknowledged
-                      ? 'Reconhecido'
-                      : 'Aguardando reconhecimento'}
-                  </p>
+                    {!alert.acknowledged ? (
+                      <button
+                        type="button"
+                        aria-label={`${
+                          isAcknowledging ? 'Reconhecendo' : 'Reconhecer'
+                        } alerta ${accessibleLevelLabel}`}
+                        aria-busy={isAcknowledging}
+                        disabled={isAcknowledging}
+                        className="rounded-lg border border-primary bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+                        onClick={() => {
+                          onAcknowledgeAlert(alert.id);
+                        }}
+                      >
+                        {isAcknowledging
+                          ? 'Reconhecendo...'
+                          : 'Reconhecer alerta'}
+                      </button>
+                    ) : null}
+                  </div>
 
-                  {!alert.acknowledged ? (
-                    <button
-                      type="button"
-                      aria-label={`${
-                        isAcknowledging ? 'Reconhecendo' : 'Reconhecer'
-                      } alerta ${accessibleLevelLabel}`}
-                      aria-busy={isAcknowledging}
-                      disabled={isAcknowledging}
-                      className="rounded-lg border border-primary bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
-                      onClick={() => {
-                        onAcknowledgeAlert(alert.id);
-                      }}
-                    >
-                      {isAcknowledging
-                        ? 'Reconhecendo...'
-                        : 'Reconhecer alerta'}
-                    </button>
+                  {hasAcknowledgementError ? (
+                    <p role="alert" className="mt-3 text-sm text-danger">
+                      Não foi possível reconhecer o alerta. Tente novamente.
+                    </p>
                   ) : null}
-                </div>
-
-                {hasAcknowledgementError ? (
-                  <p role="alert" className="mt-3 text-sm text-danger">
-                    Não foi possível reconhecer o alerta. Tente novamente.
-                  </p>
-                ) : null}
-              </article>
-            </li>
-          );
-        })}
-      </ul>
+                </article>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </section>
   );
 }

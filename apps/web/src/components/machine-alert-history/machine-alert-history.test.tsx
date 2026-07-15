@@ -51,6 +51,42 @@ describe('MachineAlertHistory', () => {
     expect(onAcknowledgeAlert).toHaveBeenCalledWith('alert-003');
   });
 
+  it('shows an empty state when there are no alerts', () => {
+    render(
+      <MachineAlertHistory
+        alerts={[]}
+        acknowledgingAlertIds={new Set()}
+        acknowledgementErrorAlertIds={new Set()}
+        onAcknowledgeAlert={jest.fn()}
+      />,
+    );
+
+    const alertHistoryRegion = screen.getByRole('region', {
+      name: 'Histórico de alertas',
+    });
+
+    expect(
+      within(alertHistoryRegion).getByRole('heading', {
+        level: 2,
+        name: 'Histórico de alertas',
+      }),
+    ).toBeInTheDocument();
+
+    const emptyState = within(alertHistoryRegion).getByText(
+      'Nenhum alerta registrado.',
+    );
+
+    expect(emptyState).toHaveClass(
+      'border-border',
+      'bg-surface-secondary',
+      'text-muted',
+    );
+
+    expect(
+      within(alertHistoryRegion).queryByRole('list'),
+    ).not.toBeInTheDocument();
+  });
+
   it('uses distinct visual styles for each alert level', () => {
     const alerts: AlertTransport[] = [
       {
