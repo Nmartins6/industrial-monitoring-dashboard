@@ -101,6 +101,8 @@ export function createMachineRealtimeClient({
         eventSource.addEventListener('ALERT_UPDATED', handleEvent);
 
         eventSource.addEventListener('error', () => {
+          // O navegador também tenta reconectar EventSource, mas fechamos a
+          // instância para manter um único ciclo controlado e testável.
           if (isDisconnected || cancelScheduledReconnect !== undefined) {
             return;
           }

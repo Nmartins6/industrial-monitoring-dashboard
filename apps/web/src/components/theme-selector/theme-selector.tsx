@@ -89,6 +89,8 @@ function getThemeButtonClassName(isActive: boolean): string {
 }
 
 export function ThemeSelector() {
+  // localStorage só existe no navegador; o snapshot de servidor fica estável
+  // em "system" para evitar mismatch durante a hidratação.
   const preference = useSyncExternalStore(
     subscribeToThemePreference,
     getStoredThemePreference,

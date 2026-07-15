@@ -25,6 +25,8 @@ export function writeSseEvent(
   response: ServerResponse,
   event: RealtimeEvent,
 ): void {
+  // Cada evento usa o nome explícito do contrato para o cliente registrar
+  // listeners específicos em vez de depender do evento genérico "message".
   response.write(`id: ${event.id}\n`);
   response.write(`event: ${event.type}\n`);
   response.write(`data: ${JSON.stringify(event)}\n\n`);
