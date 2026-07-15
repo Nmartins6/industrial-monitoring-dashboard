@@ -63,4 +63,154 @@ describe('MachineSnapshot', () => {
 
     expect(within(oeeRegion).getByText('97,8%')).toBeInTheDocument();
   });
+
+  it('uses semantic theme tokens for snapshot surfaces and labels', () => {
+    const machineStatus: MachineStatusTransport = {
+      id: 'mixer-01',
+      timestamp: '2026-07-13T14:30:00.000Z',
+      state: 'RUNNING',
+      metrics: {
+        temperature: 73.8,
+        rpm: 1234,
+        uptime: 3661,
+        efficiency: 92.4,
+      },
+      oee: {
+        overall: 87.6,
+        availability: 95.2,
+        performance: 94.1,
+        quality: 97.8,
+      },
+    };
+
+    render(<MachineSnapshot machineStatus={machineStatus} />);
+
+    const statusRegion = screen.getByRole('region', {
+      name: 'Status da máquina',
+    });
+
+    expect(statusRegion).toHaveClass(
+      'border-border',
+      'bg-surface',
+      'text-foreground',
+    );
+
+    expect(
+      within(statusRegion).getByLabelText('Última atualização da máquina'),
+    ).toHaveClass('text-muted');
+
+    const temperatureCard = screen.getByRole('article', {
+      name: 'Métrica de temperatura',
+    });
+
+    expect(temperatureCard).toHaveClass(
+      'border-border',
+      'bg-surface',
+      'text-foreground',
+    );
+
+    expect(
+      within(temperatureCard).getByRole('heading', {
+        name: 'Temperatura',
+      }),
+    ).toHaveClass('text-muted');
+
+    const rpmCard = screen.getByRole('article', {
+      name: 'Métrica de RPM',
+    });
+
+    expect(rpmCard).toHaveClass(
+      'border-border',
+      'bg-surface',
+      'text-foreground',
+    );
+
+    const uptimeCard = screen.getByRole('article', {
+      name: 'Métrica de tempo em operação',
+    });
+
+    expect(uptimeCard).toHaveClass(
+      'border-border',
+      'bg-surface',
+      'text-foreground',
+    );
+
+    const oeeCard = screen.getByRole('article', {
+      name: 'OEE geral',
+    });
+
+    expect(oeeCard).toHaveClass(
+      'border-border',
+      'bg-surface',
+      'text-foreground',
+    );
+
+    expect(
+      within(oeeCard).getByRole('heading', {
+        name: 'OEE geral',
+      }),
+    ).toHaveClass('text-muted');
+  });
+
+  it.each([
+    {
+      state: 'RUNNING' as const,
+      label: 'Em operação',
+      borderClass: 'border-success/30',
+      backgroundClass: 'bg-success/10',
+      textClass: 'text-success',
+    },
+    {
+      state: 'STOPPED' as const,
+      label: 'Parada',
+      borderClass: 'border-muted/30',
+      backgroundClass: 'bg-muted/10',
+      textClass: 'text-muted',
+    },
+    {
+      state: 'MAINTENANCE' as const,
+      label: 'Em manutenção',
+      borderClass: 'border-warning/30',
+      backgroundClass: 'bg-warning/10',
+      textClass: 'text-warning',
+    },
+    {
+      state: 'ERROR' as const,
+      label: 'Com erro',
+      borderClass: 'border-danger/30',
+      backgroundClass: 'bg-danger/10',
+      textClass: 'text-danger',
+    },
+  ])(
+    'uses semantic status styles for $state',
+    ({ state, label, borderClass, backgroundClass, textClass }) => {
+      const machineStatus: MachineStatusTransport = {
+        id: 'mixer-01',
+        timestamp: '2026-07-13T14:30:00.000Z',
+        state,
+        metrics: {
+          temperature: 73.8,
+          rpm: 1234,
+          uptime: 3661,
+          efficiency: 92.4,
+        },
+        oee: {
+          overall: 87.6,
+          availability: 95.2,
+          performance: 94.1,
+          quality: 97.8,
+        },
+      };
+
+      render(<MachineSnapshot machineStatus={machineStatus} />);
+
+      const stateBadge = screen.getByRole('status', {
+        name: 'Estado atual da máquina',
+      });
+
+      expect(stateBadge).toHaveTextContent(label);
+
+      expect(stateBadge).toHaveClass(borderClass, backgroundClass, textClass);
+    },
+  );
 });
