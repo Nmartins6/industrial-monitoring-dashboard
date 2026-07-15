@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 
 import {
   isThemePreference,
@@ -10,6 +10,8 @@ import {
 } from '@/lib/theme/theme';
 
 const DARK_MODE_MEDIA_QUERY = '(prefers-color-scheme: dark)';
+
+const THEME_PREFERENCE_CHANGE_EVENT = 'stw-theme-preference-change';
 
 function getSystemThemeQuery(): MediaQueryList | null {
   if (
@@ -33,7 +35,7 @@ function applyThemePreference(preference: ThemePreference): void {
   document.documentElement.dataset.theme = resolvedTheme;
 }
 
-function getInitialThemePreference(): ThemePreference {
+function getStoredThemePreference(): ThemePreference {
   if (typeof window === 'undefined') {
     return 'system';
   }
@@ -41,6 +43,38 @@ function getInitialThemePreference(): ThemePreference {
   const storedPreference = window.localStorage.getItem(THEME_STORAGE_KEY);
 
   return isThemePreference(storedPreference) ? storedPreference : 'system';
+}
+
+function getServerThemePreference(): ThemePreference {
+  return 'system';
+}
+
+function subscribeToThemePreference(onStoreChange: () => void): () => void {
+  function handleStorageChange(event: StorageEvent): void {
+    if (event.key === null || event.key === THEME_STORAGE_KEY) {
+      onStoreChange();
+    }
+  }
+
+  function handleLocalPreferenceChange(): void {
+    onStoreChange();
+  }
+
+  window.addEventListener('storage', handleStorageChange);
+
+  window.addEventListener(
+    THEME_PREFERENCE_CHANGE_EVENT,
+    handleLocalPreferenceChange,
+  );
+
+  return () => {
+    window.removeEventListener('storage', handleStorageChange);
+
+    window.removeEventListener(
+      THEME_PREFERENCE_CHANGE_EVENT,
+      handleLocalPreferenceChange,
+    );
+  };
 }
 
 function getThemeButtonClassName(isActive: boolean): string {
@@ -55,8 +89,10 @@ function getThemeButtonClassName(isActive: boolean): string {
 }
 
 export function ThemeSelector() {
-  const [preference, setPreference] = useState<ThemePreference>(
-    getInitialThemePreference,
+  const preference = useSyncExternalStore(
+    subscribeToThemePreference,
+    getStoredThemePreference,
+    getServerThemePreference,
   );
 
   useEffect(() => {
@@ -86,9 +122,9 @@ export function ThemeSelector() {
   }, [preference]);
 
   function handleThemeChange(nextPreference: ThemePreference): void {
-    setPreference(nextPreference);
+    window.localStorage.setItem(THEME_STORAGE_KEY, nextPreference);
 
-    localStorage.setItem(THEME_STORAGE_KEY, nextPreference);
+    window.dispatchEvent(new Event(THEME_PREFERENCE_CHANGE_EVENT));
   }
 
   return (

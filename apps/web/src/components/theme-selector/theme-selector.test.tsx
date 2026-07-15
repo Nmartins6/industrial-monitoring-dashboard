@@ -1,5 +1,7 @@
-import { act, render, screen } from '@testing-library/react';
+import { hydrateRoot } from 'react-dom/client';
+import { renderToString } from 'react-dom/server';
 
+import { act, render, screen, within } from '@testing-library/react';
 import {
   afterEach,
   beforeEach,
@@ -61,6 +63,70 @@ describe('ThemeSelector', () => {
         name: 'Usar tema escuro',
       }),
     ).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('hydrates a saved preference without changing the server HTML', async () => {
+    localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+
+    const serverHtml = renderToString(<ThemeSelector />);
+
+    const container = document.createElement('div');
+
+    container.innerHTML = serverHtml;
+    document.body.append(container);
+
+    const serverThemeSelector = within(container);
+
+    expect(
+      serverThemeSelector.getByRole('button', {
+        name: 'Usar tema do sistema',
+      }),
+    ).toHaveAttribute('aria-pressed', 'true');
+
+    expect(
+      serverThemeSelector.getByRole('button', {
+        name: 'Usar tema escuro',
+      }),
+    ).toHaveAttribute('aria-pressed', 'false');
+
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+
+    const root = hydrateRoot(container, <ThemeSelector />);
+
+    try {
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      const hydrationMessages = consoleError.mock.calls.flat().join(' ');
+
+      expect(hydrationMessages).not.toContain(
+        'A tree hydrated but some attributes of the server rendered HTML',
+      );
+
+      expect(
+        within(container).getByRole('button', {
+          name: 'Usar tema escuro',
+        }),
+      ).toHaveAttribute('aria-pressed', 'true');
+
+      expect(
+        within(container).getByRole('button', {
+          name: 'Usar tema do sistema',
+        }),
+      ).toHaveAttribute('aria-pressed', 'false');
+
+      expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
+    } finally {
+      await act(async () => {
+        root.unmount();
+      });
+
+      consoleError.mockRestore();
+      container.remove();
+    }
   });
 
   it('uses semantic theme styles and highlights the saved preference', () => {
