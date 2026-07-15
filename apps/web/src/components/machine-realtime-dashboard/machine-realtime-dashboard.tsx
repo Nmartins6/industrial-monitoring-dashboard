@@ -392,14 +392,16 @@ export function MachineRealtimeDashboard({
       ) : null}
 
       {isAlertHistoryEnabled ? (
-        <MachineAlertHistory
-          alerts={alerts}
-          acknowledgingAlertIds={acknowledgingAlertIds}
-          acknowledgementErrorAlertIds={acknowledgementErrorAlertIds}
-          onAcknowledgeAlert={(alertId) => {
-            void handleAcknowledgeAlert(alertId);
-          }}
-        />
+        <div className="mt-8">
+          <MachineAlertHistory
+            alerts={alerts}
+            acknowledgingAlertIds={acknowledgingAlertIds}
+            acknowledgementErrorAlertIds={acknowledgementErrorAlertIds}
+            onAcknowledgeAlert={(alertId) => {
+              void handleAcknowledgeAlert(alertId);
+            }}
+          />
+        </div>
       ) : null}
     </>
   );
