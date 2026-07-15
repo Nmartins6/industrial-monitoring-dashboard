@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
 import { sortAlertsByPriority } from '@industrial-monitoring/contracts';
 
@@ -70,6 +70,9 @@ const METRIC_HISTORY_LIMIT = 30;
 
 const CRITICAL_ALERT_SOUND_STORAGE_KEY = 'stw-critical-alert-sound-enabled';
 
+const CRITICAL_ALERT_SOUND_CHANGE_EVENT =
+  'stw-critical-alert-sound-preference-change';
+
 function getStoredCriticalAlertSoundEnabled(): boolean {
   if (typeof window === 'undefined') {
     return false;
@@ -97,6 +100,38 @@ function storeCriticalAlertSoundEnabled(isEnabled: boolean): void {
   } catch {
     return;
   }
+}
+
+function getServerCriticalAlertSoundEnabled(): boolean {
+  return false;
+}
+
+function subscribeToCriticalAlertSoundPreference(
+  onStoreChange: () => void,
+): () => void {
+  function handleStorageChange(event: StorageEvent): void {
+    if (event.key === null || event.key === CRITICAL_ALERT_SOUND_STORAGE_KEY) {
+      onStoreChange();
+    }
+  }
+
+  function handleLocalPreferenceChange(): void {
+    onStoreChange();
+  }
+
+  window.addEventListener('storage', handleStorageChange);
+  window.addEventListener(
+    CRITICAL_ALERT_SOUND_CHANGE_EVENT,
+    handleLocalPreferenceChange,
+  );
+
+  return () => {
+    window.removeEventListener('storage', handleStorageChange);
+    window.removeEventListener(
+      CRITICAL_ALERT_SOUND_CHANGE_EVENT,
+      handleLocalPreferenceChange,
+    );
+  };
 }
 
 const playCriticalAlertWithBrowserAudio: PlayCriticalAlertSound = () => {
@@ -221,8 +256,11 @@ export function MachineRealtimeDashboard({
   const [connectionStatus, setConnectionStatus] =
     useState<DisplayConnectionStatus>('connecting');
 
-  const [isCriticalAlertSoundEnabled, setIsCriticalAlertSoundEnabled] =
-    useState(getStoredCriticalAlertSoundEnabled);
+  const isCriticalAlertSoundEnabled = useSyncExternalStore(
+    subscribeToCriticalAlertSoundPreference,
+    getStoredCriticalAlertSoundEnabled,
+    getServerCriticalAlertSoundEnabled,
+  );
 
   const isCriticalAlertSoundEnabledRef = useRef(isCriticalAlertSoundEnabled);
 
@@ -242,8 +280,8 @@ export function MachineRealtimeDashboard({
   function handleCriticalAlertSoundToggle(): void {
     const nextIsEnabled = !isCriticalAlertSoundEnabled;
 
-    setIsCriticalAlertSoundEnabled(nextIsEnabled);
     storeCriticalAlertSoundEnabled(nextIsEnabled);
+    window.dispatchEvent(new Event(CRITICAL_ALERT_SOUND_CHANGE_EVENT));
   }
 
   async function handleAcknowledgeAlert(alertId: string): Promise<void> {
