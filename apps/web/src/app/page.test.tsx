@@ -401,6 +401,19 @@ describe('Home page', () => {
 
     const dashboardHeader = screen.getByRole('banner');
 
+    const headerContent = dashboardHeader.firstElementChild;
+
+    expect(headerContent).not.toBeNull();
+
+    expect(headerContent).toHaveClass(
+      'flex-col',
+      'items-stretch',
+      'gap-4',
+      'sm:flex-row',
+      'sm:items-center',
+      'sm:justify-between',
+    );
+
     expect(dashboardHeader).toHaveClass('border-border');
     expect(dashboardHeader).toHaveClass('bg-surface');
     expect(dashboardHeader).toHaveClass('text-foreground');
@@ -408,6 +421,19 @@ describe('Home page', () => {
     expect(
       within(dashboardHeader).getByText('Monitoramento de máquinas'),
     ).toHaveClass('text-muted');
+
+    const dashboardTitle = within(dashboardHeader).getByRole('heading', {
+      level: 1,
+      name: 'Painel de Monitoramento Industrial',
+    });
+
+    expect(dashboardTitle).toHaveClass('text-xl', 'sm:text-2xl');
+
+    const headerActions = within(dashboardHeader).getByTestId(
+      'dashboard-header-actions',
+    );
+
+    expect(headerActions).toHaveClass('flex-wrap', 'gap-3', 'sm:justify-end');
   });
 
   it('loads the machine snapshot through the dashboard dependency', async () => {

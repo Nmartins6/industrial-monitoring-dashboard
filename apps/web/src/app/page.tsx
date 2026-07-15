@@ -69,7 +69,7 @@ export async function renderDashboardPage({
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-surface text-foreground">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
+        <div className="mx-auto flex max-w-7xl flex-col items-stretch gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
             <BrandLogo />
 
@@ -78,13 +78,16 @@ export async function renderDashboardPage({
                 Monitoramento de máquinas
               </p>
 
-              <h1 className="text-2xl font-semibold tracking-tight">
+              <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
                 Painel de Monitoramento Industrial
               </h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div
+            data-testid="dashboard-header-actions"
+            className="flex flex-wrap items-center gap-3 sm:justify-end sm:gap-6"
+          >
             <ThemeSelector />
             <div>
               <p className="text-xs uppercase tracking-wider text-muted">
