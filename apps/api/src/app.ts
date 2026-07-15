@@ -17,6 +17,7 @@ import {
   serializeAlert,
   serializeMachineStatus,
   serializeMetricHistory,
+  sortAlertsByPriority,
 } from '@industrial-monitoring/contracts';
 
 import {
@@ -244,6 +245,8 @@ export function handleRequest(
         },
       });
 
+      // Alertas são emitidos apenas quando uma condição entra em estado ativo,
+      // evitando repetir o mesmo crítico a cada ciclo de telemetria.
       const alertCreatedEvents = newlyActiveConditions.flatMap((condition) => {
         const alert = createMachineAlertFromCondition({
           id: randomUUID(),
@@ -366,7 +369,13 @@ export function handleRequest(
       return;
     }
 
-    sendJson(response, 200, alertHistory.map(serializeAlert));
+    // O endpoint também aplica a regra compartilhada para proteger consumidores
+    // que injetem repositórios sem ordenação própria.
+    sendJson(
+      response,
+      200,
+      sortAlertsByPriority(alertHistory).map(serializeAlert),
+    );
 
     return;
   }

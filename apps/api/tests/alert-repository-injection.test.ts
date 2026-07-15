@@ -56,14 +56,32 @@ async function closeTestServer(server: Server): Promise<void> {
 
 describe('Alert repository injection', () => {
   it('uses the injected repository when listing alerts', async () => {
-    const injectedAlert: Alert = {
-      id: 'injected-alert-001',
-      level: 'WARNING',
-      message: 'Alert supplied by the injected repository',
-      component: 'injected-component',
-      timestamp: new Date('2026-07-12T15:00:00.000Z'),
-      acknowledged: false,
-    };
+    const injectedAlerts: Alert[] = [
+      {
+        id: 'injected-alert-info',
+        level: 'INFO',
+        message: 'Informational alert supplied by the injected repository',
+        component: 'injected-component',
+        timestamp: new Date('2026-07-12T15:00:30.000Z'),
+        acknowledged: false,
+      },
+      {
+        id: 'injected-alert-critical',
+        level: 'CRITICAL',
+        message: 'Critical alert supplied by the injected repository',
+        component: 'injected-component',
+        timestamp: new Date('2026-07-12T15:00:00.000Z'),
+        acknowledged: false,
+      },
+      {
+        id: 'injected-alert-warning',
+        level: 'WARNING',
+        message: 'Warning alert supplied by the injected repository',
+        component: 'injected-component',
+        timestamp: new Date('2026-07-12T15:00:15.000Z'),
+        acknowledged: false,
+      },
+    ];
 
     const alertRepository: AlertRepository = {
       addMachineAlert(machineId: string, alert: Alert): AddMachineAlertResult {
@@ -80,7 +98,7 @@ describe('Alert repository injection', () => {
           return undefined;
         }
 
-        return [injectedAlert];
+        return injectedAlerts;
       },
 
       acknowledgeMachineAlert(): AcknowledgeMachineAlertResult {
@@ -103,11 +121,27 @@ describe('Alert repository injection', () => {
 
       expect(body).toEqual([
         {
-          id: 'injected-alert-001',
-          level: 'WARNING',
-          message: 'Alert supplied by the injected repository',
+          id: 'injected-alert-critical',
+          level: 'CRITICAL',
+          message: 'Critical alert supplied by the injected repository',
           component: 'injected-component',
           timestamp: '2026-07-12T15:00:00.000Z',
+          acknowledged: false,
+        },
+        {
+          id: 'injected-alert-warning',
+          level: 'WARNING',
+          message: 'Warning alert supplied by the injected repository',
+          component: 'injected-component',
+          timestamp: '2026-07-12T15:00:15.000Z',
+          acknowledged: false,
+        },
+        {
+          id: 'injected-alert-info',
+          level: 'INFO',
+          message: 'Informational alert supplied by the injected repository',
+          component: 'injected-component',
+          timestamp: '2026-07-12T15:00:30.000Z',
           acknowledged: false,
         },
       ]);

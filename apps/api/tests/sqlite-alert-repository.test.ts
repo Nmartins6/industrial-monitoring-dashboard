@@ -46,6 +46,54 @@ describe('SQLite alert repository', () => {
     }
   });
 
+  it('prioritizes alert history by severity and then by newest timestamp', () => {
+    const repository = createSqliteAlertRepository({
+      databasePath: ':memory:',
+    });
+
+    try {
+      repository.addMachineAlert('mixer-01', {
+        id: 'alert-newer-info',
+        level: 'INFO',
+        message: 'Newer informational event',
+        component: 'monitoring-system',
+        timestamp: new Date('2026-07-12T10:00:30.000Z'),
+        acknowledged: false,
+      });
+
+      repository.addMachineAlert('mixer-01', {
+        id: 'alert-newer-warning',
+        level: 'WARNING',
+        message: 'Newer warning event',
+        component: 'motor',
+        timestamp: new Date('2026-07-12T10:00:31.000Z'),
+        acknowledged: false,
+      });
+
+      repository.addMachineAlert('mixer-01', {
+        id: 'alert-older-critical',
+        level: 'CRITICAL',
+        message: 'Older critical event',
+        component: 'temperature-sensor',
+        timestamp: new Date('2026-07-12T09:59:59.000Z'),
+        acknowledged: false,
+      });
+
+      const alertHistory = repository.getMachineAlertHistory('mixer-01');
+
+      expect(alertHistory?.map((alert) => alert.id)).toEqual([
+        'alert-003',
+        'alert-older-critical',
+        'alert-newer-warning',
+        'alert-002',
+        'alert-newer-info',
+        'alert-001',
+      ]);
+    } finally {
+      repository.close();
+    }
+  });
+
   it('persists acknowledgement after reopening the database', () => {
     const temporaryDirectory = mkdtempSync(
       join(tmpdir(), 'industrial-monitoring-alerts-'),

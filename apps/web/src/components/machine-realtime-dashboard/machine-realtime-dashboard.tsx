@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
+import { sortAlertsByPriority } from '@industrial-monitoring/contracts';
 
 import type {
   AlertTransport,
@@ -65,6 +67,37 @@ const CONNECTION_STATUS_STYLES: Readonly<
 };
 
 const METRIC_HISTORY_LIMIT = 30;
+
+const CRITICAL_ALERT_SOUND_STORAGE_KEY = 'stw-critical-alert-sound-enabled';
+
+function getStoredCriticalAlertSoundEnabled(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  try {
+    return (
+      window.localStorage.getItem(CRITICAL_ALERT_SOUND_STORAGE_KEY) === '1'
+    );
+  } catch {
+    return false;
+  }
+}
+
+function storeCriticalAlertSoundEnabled(isEnabled: boolean): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      CRITICAL_ALERT_SOUND_STORAGE_KEY,
+      isEnabled ? '1' : '0',
+    );
+  } catch {
+    return;
+  }
+}
 
 const playCriticalAlertWithBrowserAudio: PlayCriticalAlertSound = () => {
   if (
@@ -175,7 +208,7 @@ export function MachineRealtimeDashboard({
   );
 
   const [alerts, setAlerts] = useState<AlertTransport[]>(() => [
-    ...(initialAlerts ?? []),
+    ...sortAlertsByPriority(initialAlerts ?? []),
   ]);
 
   const [acknowledgingAlertIds, setAcknowledgingAlertIds] = useState<
@@ -188,6 +221,11 @@ export function MachineRealtimeDashboard({
   const [connectionStatus, setConnectionStatus] =
     useState<DisplayConnectionStatus>('connecting');
 
+  const [isCriticalAlertSoundEnabled, setIsCriticalAlertSoundEnabled] =
+    useState(getStoredCriticalAlertSoundEnabled);
+
+  const isCriticalAlertSoundEnabledRef = useRef(isCriticalAlertSoundEnabled);
+
   const isAlertHistoryEnabled = initialAlerts !== undefined;
 
   const isMetricHistoryEnabled = initialMetricHistory !== undefined;
@@ -196,6 +234,17 @@ export function MachineRealtimeDashboard({
 
   const notifyCriticalAlert =
     playCriticalAlertSound ?? playCriticalAlertWithBrowserAudio;
+
+  useEffect(() => {
+    isCriticalAlertSoundEnabledRef.current = isCriticalAlertSoundEnabled;
+  }, [isCriticalAlertSoundEnabled]);
+
+  function handleCriticalAlertSoundToggle(): void {
+    const nextIsEnabled = !isCriticalAlertSoundEnabled;
+
+    setIsCriticalAlertSoundEnabled(nextIsEnabled);
+    storeCriticalAlertSoundEnabled(nextIsEnabled);
+  }
 
   async function handleAcknowledgeAlert(alertId: string): Promise<void> {
     if (acknowledgingAlertIds.has(alertId)) {
@@ -260,11 +309,13 @@ export function MachineRealtimeDashboard({
         }
 
         if (event.type === 'METRIC_RECORDED') {
-          setMetricHistory((currentMetricHistory) =>
-            [...currentMetricHistory, event.payload].slice(
+          setMetricHistory((currentMetricHistory) => {
+            // O stream é contínuo; a janela móvel mantém o gráfico leve no
+            // navegador enquanto o backend não persiste histórico longo.
+            return [...currentMetricHistory, event.payload].slice(
               -METRIC_HISTORY_LIMIT,
-            ),
-          );
+            );
+          });
 
           return;
         }
@@ -272,20 +323,29 @@ export function MachineRealtimeDashboard({
         if (event.type === 'ALERT_CREATED') {
           if (
             event.payload.level === 'CRITICAL' &&
-            !event.payload.acknowledged
+            !event.payload.acknowledged &&
+            isCriticalAlertSoundEnabledRef.current
           ) {
-            notifyCriticalAlert();
+            try {
+              notifyCriticalAlert();
+            } catch {
+              // Falha de áudio não deve impedir a atualização do alerta.
+            }
           }
 
-          setAlerts((currentAlerts) => [event.payload, ...currentAlerts]);
+          setAlerts((currentAlerts) =>
+            sortAlertsByPriority([event.payload, ...currentAlerts]),
+          );
 
           return;
         }
 
         if (event.type === 'ALERT_UPDATED') {
           setAlerts((currentAlerts) =>
-            currentAlerts.map((alert) =>
-              alert.id === event.payload.id ? event.payload : alert,
+            sortAlertsByPriority(
+              currentAlerts.map((alert) =>
+                alert.id === event.payload.id ? event.payload : alert,
+              ),
             ),
           );
         }
@@ -303,7 +363,18 @@ export function MachineRealtimeDashboard({
 
   return (
     <>
-      <div className="mb-6 flex justify-end">
+      <div className="mb-6 flex flex-wrap items-center justify-end gap-3">
+        <button
+          type="button"
+          aria-pressed={isCriticalAlertSoundEnabled}
+          className="rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface-elevated"
+          onClick={handleCriticalAlertSoundToggle}
+        >
+          {isCriticalAlertSoundEnabled
+            ? 'Desativar som de alertas críticos'
+            : 'Ativar som de alertas críticos'}
+        </button>
+
         <div
           role="status"
           aria-label="Status da conexão em tempo real"

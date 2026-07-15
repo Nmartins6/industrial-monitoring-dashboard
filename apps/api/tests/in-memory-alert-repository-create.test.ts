@@ -27,6 +27,48 @@ describe('In-memory alert repository creation', () => {
     const history = repository.getMachineAlertHistory('mixer-01');
 
     expect(history).toBeDefined();
-    expect(history?.[0]).toEqual(alert);
+    expect(history).toContainEqual(alert);
+  });
+
+  it('prioritizes alert history by severity and then by newest timestamp', () => {
+    const repository = createInMemoryAlertRepository();
+
+    repository.addMachineAlert('mixer-01', {
+      id: 'alert-newer-info',
+      timestamp: new Date('2026-07-12T10:00:30.000Z'),
+      level: 'INFO',
+      component: 'monitoring-system',
+      message: 'Newer informational event',
+      acknowledged: false,
+    });
+
+    repository.addMachineAlert('mixer-01', {
+      id: 'alert-newer-warning',
+      timestamp: new Date('2026-07-12T10:00:31.000Z'),
+      level: 'WARNING',
+      component: 'motor',
+      message: 'Newer warning event',
+      acknowledged: false,
+    });
+
+    repository.addMachineAlert('mixer-01', {
+      id: 'alert-older-critical',
+      timestamp: new Date('2026-07-12T09:59:59.000Z'),
+      level: 'CRITICAL',
+      component: 'temperature-sensor',
+      message: 'Older critical event',
+      acknowledged: false,
+    });
+
+    const history = repository.getMachineAlertHistory('mixer-01');
+
+    expect(history?.map((alert) => alert.id)).toEqual([
+      'alert-003',
+      'alert-older-critical',
+      'alert-newer-warning',
+      'alert-002',
+      'alert-newer-info',
+      'alert-001',
+    ]);
   });
 });

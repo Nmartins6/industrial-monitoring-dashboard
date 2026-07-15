@@ -1,4 +1,7 @@
-import type { Alert } from '@industrial-monitoring/contracts';
+import {
+  sortAlertsByPriority,
+  type Alert,
+} from '@industrial-monitoring/contracts';
 
 import type {
   AcknowledgeMachineAlertResult,
@@ -101,12 +104,7 @@ export function createInMemoryAlertRepository(): AlertRepository {
       return undefined;
     }
 
-    return storedAlerts
-      .map(mapStoredAlertToDomain)
-      .sort(
-        (firstAlert, secondAlert) =>
-          secondAlert.timestamp.getTime() - firstAlert.timestamp.getTime(),
-      );
+    return sortAlertsByPriority(storedAlerts.map(mapStoredAlertToDomain));
   }
 
   function acknowledgeMachineAlert(

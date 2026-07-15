@@ -1,4 +1,10 @@
-export { ALERT_LEVELS, type Alert, type AlertLevel } from './alert.js';
+export {
+  ALERT_LEVELS,
+  compareAlertsByPriority,
+  sortAlertsByPriority,
+  type Alert,
+  type AlertLevel,
+} from './alert.js';
 
 export {
   MACHINE_STATES,

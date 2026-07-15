@@ -12,6 +12,8 @@ const config: Config = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    '^@industrial-monitoring/contracts$':
+      '<rootDir>/../../packages/contracts/dist/index.js',
   },
 };
 

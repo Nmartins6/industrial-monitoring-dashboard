@@ -1,6 +1,9 @@
 import { DatabaseSync } from 'node:sqlite';
 
-import type { Alert } from '@industrial-monitoring/contracts';
+import {
+  sortAlertsByPriority,
+  type Alert,
+} from '@industrial-monitoring/contracts';
 
 import type {
   AcknowledgeMachineAlertResult,
@@ -217,7 +220,9 @@ export function createSqliteAlertRepository(
 
     const rows = findAlertHistory.all(machineId) as unknown as AlertRow[];
 
-    return rows.map(mapAlertRowToDomain);
+    // A regra de severidade fica no domínio compartilhado; o SQLite permanece
+    // responsável por persistência e leitura, não pela semântica visual.
+    return sortAlertsByPriority(rows.map(mapAlertRowToDomain));
   }
 
   function addMachineAlert(

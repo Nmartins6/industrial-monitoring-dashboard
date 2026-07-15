@@ -42,7 +42,7 @@ describe('SQLite alert repository creation', () => {
       const historyBeforeReopening =
         repository.getMachineAlertHistory('mixer-01');
 
-      expect(historyBeforeReopening?.[0]).toEqual(alert);
+      expect(historyBeforeReopening).toContainEqual(alert);
 
       repository.close();
       repository = undefined;
@@ -54,7 +54,7 @@ describe('SQLite alert repository creation', () => {
       const historyAfterReopening =
         repository.getMachineAlertHistory('mixer-01');
 
-      expect(historyAfterReopening?.[0]).toEqual(alert);
+      expect(historyAfterReopening).toContainEqual(alert);
     } finally {
       repository?.close();
 
