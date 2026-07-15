@@ -93,15 +93,87 @@ describe('MachineAlertHistory', () => {
     expect(alertItems).toHaveLength(3);
 
     expect(alertItems[0]).toHaveAttribute('data-alert-level', 'CRITICAL');
-    expect(alertItems[0]).toHaveClass('border-red-800');
-    expect(alertItems[0]).toHaveClass('bg-red-950/30');
+
+    expect(alertItems[0]).toHaveClass(
+      'border-danger/30',
+      'bg-danger/10',
+      'text-foreground',
+    );
 
     expect(alertItems[1]).toHaveAttribute('data-alert-level', 'WARNING');
-    expect(alertItems[1]).toHaveClass('border-amber-800');
-    expect(alertItems[1]).toHaveClass('bg-amber-950/30');
+
+    expect(alertItems[1]).toHaveClass(
+      'border-warning/30',
+      'bg-warning/10',
+      'text-foreground',
+    );
 
     expect(alertItems[2]).toHaveAttribute('data-alert-level', 'INFO');
-    expect(alertItems[2]).toHaveClass('border-sky-800');
-    expect(alertItems[2]).toHaveClass('bg-sky-950/30');
+
+    expect(alertItems[2]).toHaveClass(
+      'border-info/30',
+      'bg-info/10',
+      'text-foreground',
+    );
+  });
+
+  it('uses semantic theme tokens for the alert panel and actions', () => {
+    const alert: AlertTransport = {
+      id: 'alert-critical',
+      level: 'CRITICAL',
+      message: 'Temperature exceeded the critical threshold',
+      component: 'temperature-sensor',
+      timestamp: '2026-07-14T18:00:00.000Z',
+      acknowledged: false,
+    };
+
+    render(
+      <MachineAlertHistory
+        alerts={[alert]}
+        acknowledgingAlertIds={new Set()}
+        acknowledgementErrorAlertIds={new Set(['alert-critical'])}
+        onAcknowledgeAlert={jest.fn()}
+      />,
+    );
+
+    const alertHistoryRegion = screen.getByRole('region', {
+      name: 'Histórico de alertas',
+    });
+
+    expect(alertHistoryRegion).toHaveClass(
+      'border-border',
+      'bg-surface',
+      'text-foreground',
+    );
+
+    expect(
+      within(alertHistoryRegion).getByText('Eventos mais recentes da máquina'),
+    ).toHaveClass('text-muted');
+
+    const alertItem = within(alertHistoryRegion).getByRole('listitem');
+
+    expect(within(alertItem).getByText('Sensor de temperatura')).toHaveClass(
+      'text-muted',
+    );
+
+    expect(
+      within(alertItem).getByText('A temperatura excedeu o limite crítico'),
+    ).toHaveClass('text-foreground');
+
+    expect(
+      within(alertItem).getByLabelText('Horário do alerta crítico'),
+    ).toHaveClass('text-muted');
+
+    expect(
+      within(alertItem).getByText('Aguardando reconhecimento'),
+    ).toHaveClass('text-muted');
+
+    expect(
+      within(alertItem).getByRole('button', {
+        name: 'Reconhecer alerta crítico',
+      }),
+    ).toHaveClass('border-primary', 'bg-primary', 'text-primary-foreground');
+
+    expect(within(alertItem).getByRole('alert')).toHaveClass('text-danger');
   });
 });

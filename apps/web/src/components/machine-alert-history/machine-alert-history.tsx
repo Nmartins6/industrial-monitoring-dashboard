@@ -22,9 +22,9 @@ const ALERT_LEVEL_ACCESSIBLE_LABELS: Readonly<
 };
 
 const ALERT_LEVEL_STYLES: Readonly<Record<AlertTransport['level'], string>> = {
-  INFO: 'border-sky-800 bg-sky-950/30',
-  WARNING: 'border-amber-800 bg-amber-950/30',
-  CRITICAL: 'border-red-800 bg-red-950/30',
+  INFO: 'border-info/30 bg-info/10 text-foreground',
+  WARNING: 'border-warning/30 bg-warning/10 text-foreground',
+  CRITICAL: 'border-danger/30 bg-danger/10 text-foreground',
 };
 
 const ALERT_COMPONENT_LABELS: Readonly<Record<string, string>> = {
@@ -70,14 +70,14 @@ export function MachineAlertHistory({
   return (
     <section
       aria-label="Histórico de alertas"
-      className="rounded-2xl border border-slate-800 bg-slate-950 p-6"
+      className="rounded-2xl border border-border bg-surface p-6 text-foreground"
     >
       <div>
-        <h2 className="text-lg font-semibold text-slate-100">
+        <h2 className="text-lg font-semibold text-foreground">
           Histórico de alertas
         </h2>
 
-        <p className="mt-1 text-sm text-slate-400">
+        <p className="mt-1 text-sm text-muted">
           Eventos mais recentes da máquina
         </p>
       </div>
@@ -113,10 +113,10 @@ export function MachineAlertHistory({
                     <div className="flex flex-wrap items-center gap-3">
                       <p className="text-sm font-semibold">{levelLabel}</p>
 
-                      <p className="text-xs text-slate-400">{componentLabel}</p>
+                      <p className="text-xs text-muted">{componentLabel}</p>
                     </div>
 
-                    <p className="mt-2 text-sm text-slate-200">
+                    <p className="mt-2 text-sm text-foreground">
                       {messageLabel}
                     </p>
                   </div>
@@ -124,14 +124,14 @@ export function MachineAlertHistory({
                   <time
                     aria-label={`Horário do alerta ${accessibleLevelLabel}`}
                     dateTime={alert.timestamp}
-                    className="text-sm text-slate-400"
+                    className="text-sm text-muted"
                   >
                     {timeFormatter.format(new Date(alert.timestamp))}
                   </time>
                 </div>
 
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted">
                     {alert.acknowledged
                       ? 'Reconhecido'
                       : 'Aguardando reconhecimento'}
@@ -145,7 +145,7 @@ export function MachineAlertHistory({
                       } alerta ${accessibleLevelLabel}`}
                       aria-busy={isAcknowledging}
                       disabled={isAcknowledging}
-                      className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm font-medium text-slate-100 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="rounded-lg border border-primary bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
                       onClick={() => {
                         onAcknowledgeAlert(alert.id);
                       }}
@@ -158,7 +158,7 @@ export function MachineAlertHistory({
                 </div>
 
                 {hasAcknowledgementError ? (
-                  <p role="alert" className="mt-3 text-sm text-red-300">
+                  <p role="alert" className="mt-3 text-sm text-danger">
                     Não foi possível reconhecer o alerta. Tente novamente.
                   </p>
                 ) : null}
