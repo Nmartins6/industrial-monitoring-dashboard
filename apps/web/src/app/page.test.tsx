@@ -358,6 +358,58 @@ describe('Home page', () => {
     ).toBeInTheDocument();
   });
 
+  it('renders the theme selector in the dashboard header', async () => {
+    await renderHome();
+
+    const themeSelector = screen.getByRole('group', {
+      name: 'Seleção de tema',
+    });
+
+    expect(themeSelector).toBeInTheDocument();
+
+    expect(
+      within(themeSelector).getByRole('button', {
+        name: 'Usar tema claro',
+      }),
+    ).toBeInTheDocument();
+
+    expect(
+      within(themeSelector).getByRole('button', {
+        name: 'Usar tema escuro',
+      }),
+    ).toBeInTheDocument();
+
+    expect(
+      within(themeSelector).getByRole('button', {
+        name: 'Usar tema do sistema',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('renders the STW brand in the dashboard header', async () => {
+    await renderHome();
+
+    expect(
+      screen.getByRole('img', {
+        name: 'STW',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('uses the semantic theme colors in the dashboard header', async () => {
+    await renderHome();
+
+    const dashboardHeader = screen.getByRole('banner');
+
+    expect(dashboardHeader).toHaveClass('border-border');
+    expect(dashboardHeader).toHaveClass('bg-surface');
+    expect(dashboardHeader).toHaveClass('text-foreground');
+
+    expect(
+      within(dashboardHeader).getByText('Monitoramento de máquinas'),
+    ).toHaveClass('text-muted');
+  });
+
   it('loads the machine snapshot through the dashboard dependency', async () => {
     const machineStatus: MachineStatusTransport = {
       id: 'mixer-01',

@@ -9,8 +9,10 @@ import {
   MachineApiError,
 } from '@/lib/api/machine-api-client';
 
+import { BrandLogo } from '@/components/brand-logo/brand-logo';
 import { MachineDataRetry } from '@/components/machine-data-retry/machine-data-retry';
 import { MachineRealtimeDashboard } from '@/components/machine-realtime-dashboard/machine-realtime-dashboard';
+import { ThemeSelector } from '@/components/theme-selector/theme-selector';
 
 const DEFAULT_API_BASE_URL = 'http://localhost:3333';
 
@@ -65,22 +67,27 @@ export async function renderDashboardPage({
   const isConnected = machineStatus !== null;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="border-b border-slate-800 bg-slate-900">
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="border-b border-border bg-surface text-foreground">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-          <div>
-            <p className="text-sm font-medium text-slate-400">
-              Monitoramento de máquinas
-            </p>
+          <div className="flex items-center gap-4">
+            <BrandLogo />
 
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Painel de Monitoramento Industrial
-            </h1>
+            <div>
+              <p className="text-sm font-medium text-muted">
+                Monitoramento de máquinas
+              </p>
+
+              <h1 className="text-2xl font-semibold tracking-tight">
+                Painel de Monitoramento Industrial
+              </h1>
+            </div>
           </div>
 
           <div className="flex items-center gap-6">
+            <ThemeSelector />
             <div>
-              <p className="text-xs uppercase tracking-wider text-slate-500">
+              <p className="text-xs uppercase tracking-wider text-muted">
                 Máquina
               </p>
 
