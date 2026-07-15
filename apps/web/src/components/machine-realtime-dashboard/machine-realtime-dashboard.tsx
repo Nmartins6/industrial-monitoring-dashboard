@@ -53,6 +53,14 @@ const CONNECTION_STATUS_LABELS: Record<DisplayConnectionStatus, string> = {
   disconnected: 'Desconectado',
 };
 
+const CONNECTION_STATUS_STYLES: Readonly<
+  Record<DisplayConnectionStatus, string>
+> = {
+  connecting: 'border-info/30 bg-info/10 text-info',
+  connected: 'border-success/30 bg-success/10 text-success',
+  disconnected: 'border-danger/30 bg-danger/10 text-danger',
+};
+
 const METRIC_HISTORY_LIMIT = 30;
 
 const connectWithBrowserEventSource: ConnectToMachine = (
@@ -220,6 +228,8 @@ export function MachineRealtimeDashboard({
     return disconnect;
   }, [connectToMachine, initialMachineStatus.id]);
 
+  const connectionStatusStyle = CONNECTION_STATUS_STYLES[connectionStatus];
+
   return (
     <>
       <div className="mb-6 flex justify-end">
@@ -227,7 +237,7 @@ export function MachineRealtimeDashboard({
           role="status"
           aria-label="Status da conexão em tempo real"
           aria-live="polite"
-          className="rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300"
+          className={`rounded-full border px-4 py-2 text-sm font-medium ${connectionStatusStyle}`}
         >
           {CONNECTION_STATUS_LABELS[connectionStatus]}
         </div>

@@ -98,11 +98,11 @@ export async function renderDashboardPage({
               <div
                 role="status"
                 aria-label="Status da conexão em tempo real"
-                className="flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-300"
+                className="flex items-center gap-2 rounded-full border border-danger/30 bg-danger/10 px-3 py-2 text-sm font-medium text-danger"
               >
                 <span
                   aria-hidden="true"
-                  className="h-2 w-2 rounded-full bg-red-400"
+                  className="h-2 w-2 rounded-full bg-danger"
                 />
                 Desconectado
               </div>
@@ -120,18 +120,18 @@ export async function renderDashboardPage({
                 ? 'machine-not-found-title'
                 : 'machine-data-unavailable-title'
             }
-            className="rounded-xl border border-red-500/30 bg-red-500/10 p-6"
+            className="rounded-xl border border-danger/30 bg-danger/10 p-6 text-foreground"
           >
             {machineLoadFailure === 'not-found' ? (
               <>
                 <h2
                   id="machine-not-found-title"
-                  className="text-lg font-semibold text-red-200"
+                  className="text-lg font-semibold text-danger"
                 >
                   Máquina não encontrada
                 </h2>
 
-                <p className="mt-2 text-sm text-red-100">
+                <p className="mt-2 text-sm text-muted">
                   A máquina monitorada não foi encontrada.
                 </p>
               </>
@@ -139,12 +139,12 @@ export async function renderDashboardPage({
               <>
                 <h2
                   id="machine-data-unavailable-title"
-                  className="text-lg font-semibold text-red-200"
+                  className="text-lg font-semibold text-danger"
                 >
                   Dados da máquina indisponíveis
                 </h2>
 
-                <p className="mt-2 text-sm text-red-100">
+                <p className="mt-2 text-sm text-muted">
                   Não foi possível carregar os dados mais recentes da máquina.
                 </p>
 

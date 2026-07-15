@@ -250,6 +250,12 @@ describe('MachineRealtimeDashboard', () => {
 
     expect(connectionStatus).toHaveTextContent('Conectando');
 
+    expect(connectionStatus).toHaveClass(
+      'border-info/30',
+      'bg-info/10',
+      'text-info',
+    );
+
     if (onConnectionChange === undefined) {
       throw new Error('Connection status listener was not registered');
     }
@@ -262,11 +268,23 @@ describe('MachineRealtimeDashboard', () => {
 
     expect(connectionStatus).toHaveTextContent('Conectado');
 
+    expect(connectionStatus).toHaveClass(
+      'border-success/30',
+      'bg-success/10',
+      'text-success',
+    );
+
     act(() => {
       changeConnectionStatus('disconnected');
     });
 
     expect(connectionStatus).toHaveTextContent('Desconectado');
+
+    expect(connectionStatus).toHaveClass(
+      'border-danger/30',
+      'bg-danger/10',
+      'text-danger',
+    );
 
     expect(connectToMachine).toHaveBeenCalledTimes(1);
   });

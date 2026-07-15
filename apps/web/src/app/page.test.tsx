@@ -664,24 +664,37 @@ describe('Home page', () => {
 
     render(page);
 
-    expect(
-      screen.getByRole('status', {
-        name: 'Status da conexão em tempo real',
-      }),
-    ).toHaveTextContent('Desconectado');
+    const connectionStatus = screen.getByRole('status', {
+      name: 'Status da conexão em tempo real',
+    });
+
+    expect(connectionStatus).toHaveTextContent('Desconectado');
+
+    expect(connectionStatus).toHaveClass(
+      'border-danger/30',
+      'bg-danger/10',
+      'text-danger',
+    );
 
     const errorAlert = screen.getByRole('alert');
 
-    expect(
-      within(errorAlert).getByRole('heading', {
-        level: 2,
-        name: 'Máquina não encontrada',
-      }),
-    ).toBeInTheDocument();
-
-    expect(errorAlert).toHaveTextContent(
-      'A máquina monitorada não foi encontrada.',
+    expect(errorAlert).toHaveClass(
+      'border-danger/30',
+      'bg-danger/10',
+      'text-foreground',
     );
+
+    const errorTitle = within(errorAlert).getByRole('heading', {
+      level: 2,
+      name: 'Máquina não encontrada',
+    });
+
+    expect(errorTitle).toBeInTheDocument();
+    expect(errorTitle).toHaveClass('text-danger');
+
+    expect(
+      within(errorAlert).getByText('A máquina monitorada não foi encontrada.'),
+    ).toHaveClass('text-muted');
 
     expect(
       screen.queryByRole('region', {
@@ -711,24 +724,39 @@ describe('Home page', () => {
 
     render(page);
 
-    expect(
-      screen.getByRole('status', {
-        name: 'Status da conexão em tempo real',
-      }),
-    ).toHaveTextContent('Desconectado');
+    const connectionStatus = screen.getByRole('status', {
+      name: 'Status da conexão em tempo real',
+    });
+
+    expect(connectionStatus).toHaveTextContent('Desconectado');
+
+    expect(connectionStatus).toHaveClass(
+      'border-danger/30',
+      'bg-danger/10',
+      'text-danger',
+    );
 
     const errorAlert = screen.getByRole('alert');
 
-    expect(
-      within(errorAlert).getByRole('heading', {
-        level: 2,
-        name: 'Dados da máquina indisponíveis',
-      }),
-    ).toBeInTheDocument();
-
-    expect(errorAlert).toHaveTextContent(
-      'Não foi possível carregar os dados mais recentes da máquina.',
+    expect(errorAlert).toHaveClass(
+      'border-danger/30',
+      'bg-danger/10',
+      'text-foreground',
     );
+
+    const errorTitle = within(errorAlert).getByRole('heading', {
+      level: 2,
+      name: 'Dados da máquina indisponíveis',
+    });
+
+    expect(errorTitle).toBeInTheDocument();
+    expect(errorTitle).toHaveClass('text-danger');
+
+    expect(
+      within(errorAlert).getByText(
+        'Não foi possível carregar os dados mais recentes da máquina.',
+      ),
+    ).toHaveClass('text-muted');
 
     expect(
       screen.queryByRole('region', {
