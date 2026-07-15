@@ -210,9 +210,27 @@ describe('MachineSnapshot', () => {
       'text-foreground',
     );
 
+    const statusContent = statusRegion.firstElementChild;
+
+    expect(statusContent).not.toBeNull();
+
+    expect(statusContent).toHaveClass(
+      'flex-col',
+      'items-start',
+      'gap-4',
+      'sm:flex-row',
+      'sm:justify-between',
+    );
+
     expect(
       within(statusRegion).getByLabelText('Última atualização da máquina'),
     ).toHaveClass('text-muted');
+
+    const stateBadge = within(statusRegion).getByRole('status', {
+      name: 'Estado atual da máquina',
+    });
+
+    expect(stateBadge).toHaveClass('self-start');
 
     const temperatureCard = screen.getByRole('article', {
       name: 'Métrica de temperatura',

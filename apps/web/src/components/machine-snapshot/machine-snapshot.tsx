@@ -94,7 +94,7 @@ export function MachineSnapshot({ machineStatus }: MachineSnapshotProps) {
         aria-labelledby="machine-status-title"
         className="rounded-xl border border-border bg-surface p-6 text-foreground"
       >
-        <div className="flex items-start justify-between gap-6">
+        <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
           <div>
             <h2 id="machine-status-title" className="text-lg font-semibold">
               Status da máquina
@@ -112,7 +112,7 @@ export function MachineSnapshot({ machineStatus }: MachineSnapshotProps) {
           <div
             role="status"
             aria-label="Estado atual da máquina"
-            className={`rounded-full border px-4 py-2 text-sm font-semibold ${machineStateStyle}`}
+            className={`self-start rounded-full border px-4 py-2 text-sm font-semibold ${machineStateStyle}`}
           >
             {MACHINE_STATE_LABELS[machineStatus.state]}
           </div>
