@@ -4,6 +4,11 @@ interface MachineSnapshotProps {
   machineStatus: MachineStatusTransport;
 }
 
+interface OeeProgressBarProps {
+  accessibleLabel: string;
+  value: number;
+}
+
 const numberFormatter = new Intl.NumberFormat('pt-BR', {
   maximumFractionDigits: 1,
 });
@@ -49,6 +54,35 @@ function formatUptime(uptimeInSeconds: number): string {
 
 function formatPercentage(value: number): string {
   return `${numberFormatter.format(value)}%`;
+}
+
+function normalizePercentage(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+
+  return Math.min(100, Math.max(0, value));
+}
+
+function OeeProgressBar({ accessibleLabel, value }: OeeProgressBarProps) {
+  const normalizedValue = normalizePercentage(value);
+
+  return (
+    <div className="mt-4 h-2 overflow-hidden rounded-full bg-surface-secondary">
+      <div
+        role="progressbar"
+        aria-label={accessibleLabel}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={normalizedValue}
+        aria-valuetext={formatPercentage(normalizedValue)}
+        className="h-full rounded-full bg-primary transition-[width]"
+        style={{
+          width: `${normalizedValue}%`,
+        }}
+      />
+    </div>
+  );
 }
 
 export function MachineSnapshot({ machineStatus }: MachineSnapshotProps) {
@@ -143,6 +177,11 @@ export function MachineSnapshot({ machineStatus }: MachineSnapshotProps) {
             <p className="mt-3 text-3xl font-semibold">
               {formatPercentage(machineStatus.oee.overall)}
             </p>
+
+            <OeeProgressBar
+              accessibleLabel="Progresso do OEE geral"
+              value={machineStatus.oee.overall}
+            />
           </article>
 
           <article
@@ -154,6 +193,11 @@ export function MachineSnapshot({ machineStatus }: MachineSnapshotProps) {
             <p className="mt-3 text-3xl font-semibold">
               {formatPercentage(machineStatus.oee.availability)}
             </p>
+
+            <OeeProgressBar
+              accessibleLabel="Progresso da disponibilidade"
+              value={machineStatus.oee.availability}
+            />
           </article>
 
           <article
@@ -165,6 +209,11 @@ export function MachineSnapshot({ machineStatus }: MachineSnapshotProps) {
             <p className="mt-3 text-3xl font-semibold">
               {formatPercentage(machineStatus.oee.performance)}
             </p>
+
+            <OeeProgressBar
+              accessibleLabel="Progresso do desempenho"
+              value={machineStatus.oee.performance}
+            />
           </article>
 
           <article
@@ -176,6 +225,11 @@ export function MachineSnapshot({ machineStatus }: MachineSnapshotProps) {
             <p className="mt-3 text-3xl font-semibold">
               {formatPercentage(machineStatus.oee.quality)}
             </p>
+
+            <OeeProgressBar
+              accessibleLabel="Progresso da qualidade"
+              value={machineStatus.oee.quality}
+            />
           </article>
         </div>
       </section>
