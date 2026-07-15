@@ -66,7 +66,7 @@ export function MachineAlertHistory({
   return (
     <section
       aria-label="Histórico de alertas"
-      className="rounded-2xl border border-border bg-surface p-6 text-foreground"
+      className="dashboard-card rounded-2xl border border-border bg-surface p-6 text-foreground"
     >
       <div>
         <h2 className="text-lg font-semibold text-foreground">
@@ -109,7 +109,7 @@ export function MachineAlertHistory({
               <li
                 key={alert.id}
                 data-alert-level={alert.level}
-                className={`rounded-xl border p-5 ${levelStyle} ${
+                className={`dashboard-card rounded-xl border p-5 ${levelStyle} ${
                   isUnacknowledgedCritical ? 'ring-2 ring-danger/40' : ''
                 }`}
               >

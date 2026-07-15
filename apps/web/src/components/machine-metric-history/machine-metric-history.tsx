@@ -174,6 +174,20 @@ function MetricTrendIndicator({
   );
 }
 
+function AnimatedValue({
+  children,
+  valueKey,
+}: {
+  children: string;
+  valueKey: string | number;
+}) {
+  return (
+    <span key={valueKey} className="metric-value-change">
+      {children}
+    </span>
+  );
+}
+
 const metricNumberFormatter = new Intl.NumberFormat('pt-BR', {
   maximumFractionDigits: 1,
 });
@@ -220,6 +234,21 @@ export function MachineMetricHistory({
           previousMetric?.efficiency,
         );
 
+  const latestTemperatureLabel =
+    latestMetric === undefined
+      ? ''
+      : `${metricNumberFormatter.format(latestMetric.temperature)} °C`;
+
+  const latestRpmLabel =
+    latestMetric === undefined
+      ? ''
+      : `${metricNumberFormatter.format(latestMetric.rpm)} RPM`;
+
+  const latestEfficiencyLabel =
+    latestMetric === undefined
+      ? ''
+      : `${metricNumberFormatter.format(latestMetric.efficiency)}%`;
+
   return (
     <section aria-labelledby="machine-metric-history-title" className="mt-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -242,12 +271,14 @@ export function MachineMetricHistory({
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <article
               aria-label="Resumo da temperatura"
-              className="rounded-lg border border-border bg-surface p-4 text-sm text-foreground"
+              className="dashboard-card rounded-lg border border-border bg-surface p-4 text-sm text-foreground"
             >
               <p>
                 Última temperatura:{' '}
                 <strong>
-                  {metricNumberFormatter.format(latestMetric.temperature)} °C
+                  <AnimatedValue valueKey={latestMetric.temperature}>
+                    {latestTemperatureLabel}
+                  </AnimatedValue>
                 </strong>
               </p>
 
@@ -259,12 +290,14 @@ export function MachineMetricHistory({
 
             <article
               aria-label="Resumo da rotação"
-              className="rounded-lg border border-border bg-surface p-4 text-sm text-foreground"
+              className="dashboard-card rounded-lg border border-border bg-surface p-4 text-sm text-foreground"
             >
               <p>
                 Última rotação:{' '}
                 <strong>
-                  {metricNumberFormatter.format(latestMetric.rpm)} RPM
+                  <AnimatedValue valueKey={latestMetric.rpm}>
+                    {latestRpmLabel}
+                  </AnimatedValue>
                 </strong>
               </p>
 
@@ -276,12 +309,14 @@ export function MachineMetricHistory({
 
             <article
               aria-label="Resumo da eficiência"
-              className="rounded-lg border border-border bg-surface p-4 text-sm text-foreground"
+              className="dashboard-card rounded-lg border border-border bg-surface p-4 text-sm text-foreground"
             >
               <p>
                 Última eficiência:{' '}
                 <strong>
-                  {metricNumberFormatter.format(latestMetric.efficiency)}%
+                  <AnimatedValue valueKey={latestMetric.efficiency}>
+                    {latestEfficiencyLabel}
+                  </AnimatedValue>
                 </strong>
               </p>
 
@@ -295,7 +330,7 @@ export function MachineMetricHistory({
           <div className="mt-4 grid gap-4 lg:grid-cols-3">
             <figure
               aria-labelledby="temperature-history-title"
-              className="rounded-xl border border-border bg-surface p-5 text-foreground"
+              className="dashboard-card rounded-xl border border-border bg-surface p-5 text-foreground"
             >
               <figcaption
                 id="temperature-history-title"
@@ -315,7 +350,7 @@ export function MachineMetricHistory({
 
             <figure
               aria-labelledby="rotation-history-title"
-              className="rounded-xl border border-border bg-surface p-5 text-foreground"
+              className="dashboard-card rounded-xl border border-border bg-surface p-5 text-foreground"
             >
               <figcaption id="rotation-history-title" className="font-semibold">
                 Histórico de rotação
@@ -332,7 +367,7 @@ export function MachineMetricHistory({
 
             <figure
               aria-labelledby="efficiency-history-title"
-              className="rounded-xl border border-border bg-surface p-5 text-foreground"
+              className="dashboard-card rounded-xl border border-border bg-surface p-5 text-foreground"
             >
               <figcaption
                 id="efficiency-history-title"

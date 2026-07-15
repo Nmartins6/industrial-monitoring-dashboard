@@ -136,6 +136,50 @@ body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
+@keyframes metric-value-change {
+  0% {
+    opacity: 0.985;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+.dashboard-card {
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.dashboard-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: 0 12px 28px
+    color-mix(in oklab, var(--foreground) 10%, transparent);
+  transform: translateY(-2px);
+}
+
+.metric-value-change {
+  animation: metric-value-change 1000ms ease-in-out;
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-card,
+  .dashboard-card:hover {
+    box-shadow: none;
+    transform: none;
+    transition: none;
+  }
+
+  .metric-value-change {
+    animation: none;
+  }
+}
+
 .brand-logo-dark {
   display: none;
 }

@@ -85,14 +85,44 @@ function OeeProgressBar({ accessibleLabel, value }: OeeProgressBarProps) {
   );
 }
 
+function AnimatedValue({
+  children,
+  valueKey,
+}: {
+  children: string;
+  valueKey: string | number;
+}) {
+  return (
+    <span key={valueKey} className="metric-value-change">
+      {children}
+    </span>
+  );
+}
+
 export function MachineSnapshot({ machineStatus }: MachineSnapshotProps) {
   const machineStateStyle = MACHINE_STATE_STYLES[machineStatus.state];
+
+  const temperatureLabel = `${numberFormatter.format(
+    machineStatus.metrics.temperature,
+  )} °C`;
+
+  const rpmLabel = integerFormatter.format(machineStatus.metrics.rpm);
+
+  const uptimeLabel = formatUptime(machineStatus.metrics.uptime);
+
+  const overallOeeLabel = formatPercentage(machineStatus.oee.overall);
+
+  const availabilityLabel = formatPercentage(machineStatus.oee.availability);
+
+  const performanceLabel = formatPercentage(machineStatus.oee.performance);
+
+  const qualityLabel = formatPercentage(machineStatus.oee.quality);
 
   return (
     <>
       <section
         aria-labelledby="machine-status-title"
-        className="rounded-xl border border-border bg-surface p-6 text-foreground"
+        className="dashboard-card rounded-xl border border-border bg-surface p-6 text-foreground"
       >
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
           <div>
@@ -127,36 +157,42 @@ export function MachineSnapshot({ machineStatus }: MachineSnapshotProps) {
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <article
             aria-label="Métrica de temperatura"
-            className="rounded-xl border border-border bg-surface p-6 text-foreground"
+            className="dashboard-card rounded-xl border border-border bg-surface p-6 text-foreground"
           >
             <h3 className="text-sm font-medium text-muted">Temperatura</h3>
 
             <p className="mt-3 text-3xl font-semibold">
-              {numberFormatter.format(machineStatus.metrics.temperature)} °C
+              <AnimatedValue valueKey={machineStatus.metrics.temperature}>
+                {temperatureLabel}
+              </AnimatedValue>
             </p>
           </article>
 
           <article
             aria-label="Métrica de RPM"
-            className="rounded-xl border border-border bg-surface p-6 text-foreground"
+            className="dashboard-card rounded-xl border border-border bg-surface p-6 text-foreground"
           >
             <h3 className="text-sm font-medium text-muted">RPM</h3>
 
             <p className="mt-3 text-3xl font-semibold">
-              {integerFormatter.format(machineStatus.metrics.rpm)}
+              <AnimatedValue valueKey={machineStatus.metrics.rpm}>
+                {rpmLabel}
+              </AnimatedValue>
             </p>
           </article>
 
           <article
             aria-label="Métrica de tempo em operação"
-            className="rounded-xl border border-border bg-surface p-6 text-foreground"
+            className="dashboard-card rounded-xl border border-border bg-surface p-6 text-foreground"
           >
             <h3 className="text-sm font-medium text-muted">
               Tempo em operação
             </h3>
 
             <p className="mt-3 text-3xl font-semibold">
-              {formatUptime(machineStatus.metrics.uptime)}
+              <AnimatedValue valueKey={machineStatus.metrics.uptime}>
+                {uptimeLabel}
+              </AnimatedValue>
             </p>
           </article>
         </div>
@@ -170,12 +206,14 @@ export function MachineSnapshot({ machineStatus }: MachineSnapshotProps) {
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <article
             aria-label="OEE geral"
-            className="rounded-xl border border-border bg-surface p-6 text-foreground"
+            className="dashboard-card rounded-xl border border-border bg-surface p-6 text-foreground"
           >
             <h3 className="text-sm font-medium text-muted">OEE geral</h3>
 
             <p className="mt-3 text-3xl font-semibold">
-              {formatPercentage(machineStatus.oee.overall)}
+              <AnimatedValue valueKey={machineStatus.oee.overall}>
+                {overallOeeLabel}
+              </AnimatedValue>
             </p>
 
             <OeeProgressBar
@@ -186,12 +224,14 @@ export function MachineSnapshot({ machineStatus }: MachineSnapshotProps) {
 
           <article
             aria-label="Disponibilidade"
-            className="rounded-xl border border-border bg-surface p-6 text-foreground"
+            className="dashboard-card rounded-xl border border-border bg-surface p-6 text-foreground"
           >
             <h3 className="text-sm font-medium text-muted">Disponibilidade</h3>
 
             <p className="mt-3 text-3xl font-semibold">
-              {formatPercentage(machineStatus.oee.availability)}
+              <AnimatedValue valueKey={machineStatus.oee.availability}>
+                {availabilityLabel}
+              </AnimatedValue>
             </p>
 
             <OeeProgressBar
@@ -202,12 +242,14 @@ export function MachineSnapshot({ machineStatus }: MachineSnapshotProps) {
 
           <article
             aria-label="Desempenho"
-            className="rounded-xl border border-border bg-surface p-6 text-foreground"
+            className="dashboard-card rounded-xl border border-border bg-surface p-6 text-foreground"
           >
             <h3 className="text-sm font-medium text-muted">Desempenho</h3>
 
             <p className="mt-3 text-3xl font-semibold">
-              {formatPercentage(machineStatus.oee.performance)}
+              <AnimatedValue valueKey={machineStatus.oee.performance}>
+                {performanceLabel}
+              </AnimatedValue>
             </p>
 
             <OeeProgressBar
@@ -218,12 +260,14 @@ export function MachineSnapshot({ machineStatus }: MachineSnapshotProps) {
 
           <article
             aria-label="Qualidade"
-            className="rounded-xl border border-border bg-surface p-6 text-foreground"
+            className="dashboard-card rounded-xl border border-border bg-surface p-6 text-foreground"
           >
             <h3 className="text-sm font-medium text-muted">Qualidade</h3>
 
             <p className="mt-3 text-3xl font-semibold">
-              {formatPercentage(machineStatus.oee.quality)}
+              <AnimatedValue valueKey={machineStatus.oee.quality}>
+                {qualityLabel}
+              </AnimatedValue>
             </p>
 
             <OeeProgressBar
