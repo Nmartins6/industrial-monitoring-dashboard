@@ -84,6 +84,9 @@ export function MachineAlertHistory({
 
       <ul className="mt-4 space-y-3">
         {alerts.map((alert) => {
+          const isUnacknowledgedCritical =
+            alert.level === 'CRITICAL' && !alert.acknowledged;
+
           const isAcknowledging = acknowledgingAlertIds.has(alert.id);
 
           const hasAcknowledgementError = acknowledgementErrorAlertIds.has(
@@ -105,9 +108,21 @@ export function MachineAlertHistory({
             <li
               key={alert.id}
               data-alert-level={alert.level}
-              className={`rounded-xl border p-5 ${levelStyle}`}
+              className={`rounded-xl border p-5 ${levelStyle} ${
+                isUnacknowledgedCritical ? 'ring-2 ring-danger/40' : ''
+              }`}
             >
               <article>
+                {isUnacknowledgedCritical ? (
+                  <p
+                    role="status"
+                    aria-label="Alerta crítico não reconhecido"
+                    aria-live="assertive"
+                    className="mb-4 inline-flex rounded-full border border-danger/30 bg-danger/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-danger"
+                  >
+                    Alerta crítico
+                  </p>
+                ) : null}
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <div className="flex flex-wrap items-center gap-3">

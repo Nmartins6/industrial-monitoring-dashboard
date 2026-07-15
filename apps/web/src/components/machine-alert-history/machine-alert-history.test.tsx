@@ -117,6 +117,73 @@ describe('MachineAlertHistory', () => {
     );
   });
 
+  it('highlights and announces an unacknowledged critical alert', () => {
+    const alerts: AlertTransport[] = [
+      {
+        id: 'alert-critical-pending',
+        level: 'CRITICAL',
+        message: 'Temperature exceeded the critical threshold',
+        component: 'temperature-sensor',
+        timestamp: '2026-07-14T18:00:00.000Z',
+        acknowledged: false,
+      },
+      {
+        id: 'alert-critical-acknowledged',
+        level: 'CRITICAL',
+        message: 'Temperature exceeded the critical threshold',
+        component: 'temperature-sensor',
+        timestamp: '2026-07-14T17:55:00.000Z',
+        acknowledged: true,
+      },
+    ];
+
+    render(
+      <MachineAlertHistory
+        alerts={alerts}
+        acknowledgingAlertIds={new Set()}
+        acknowledgementErrorAlertIds={new Set()}
+        onAcknowledgeAlert={jest.fn()}
+      />,
+    );
+
+    const alertItems = screen.getAllByRole('listitem');
+
+    expect(alertItems).toHaveLength(2);
+
+    const pendingCriticalAlert = alertItems[0];
+
+    expect(pendingCriticalAlert).toHaveClass('ring-2', 'ring-danger/40');
+
+    const criticalAnnouncement = within(pendingCriticalAlert).getByRole(
+      'status',
+      {
+        name: 'Alerta crítico não reconhecido',
+      },
+    );
+
+    expect(criticalAnnouncement).toHaveTextContent('Alerta crítico');
+    expect(criticalAnnouncement).toHaveAttribute('aria-live', 'assertive');
+
+    expect(criticalAnnouncement).toHaveClass(
+      'border-danger/30',
+      'bg-danger/10',
+      'text-danger',
+    );
+
+    const acknowledgedCriticalAlert = alertItems[1];
+
+    expect(acknowledgedCriticalAlert).not.toHaveClass(
+      'ring-2',
+      'ring-danger/40',
+    );
+
+    expect(
+      within(acknowledgedCriticalAlert).queryByRole('status', {
+        name: 'Alerta crítico não reconhecido',
+      }),
+    ).not.toBeInTheDocument();
+  });
+
   it('uses semantic theme tokens for the alert panel and actions', () => {
     const alert: AlertTransport = {
       id: 'alert-critical',
