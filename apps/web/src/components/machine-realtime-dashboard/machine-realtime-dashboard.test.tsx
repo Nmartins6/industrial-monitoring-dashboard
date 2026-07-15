@@ -528,9 +528,7 @@ describe('MachineRealtimeDashboard', () => {
           _machineId: string,
           options: {
             onEvent(event: RealtimeEvent): void;
-            onConnectionChange(
-              status: 'connected' | 'disconnected',
-            ): void;
+            onConnectionChange(status: 'connected' | 'disconnected'): void;
           },
         ) => {
           onEvent = options.onEvent;
@@ -551,9 +549,7 @@ describe('MachineRealtimeDashboard', () => {
       );
 
       if (onEvent === undefined) {
-        throw new Error(
-          'Realtime event listener was not registered',
-        );
+        throw new Error('Realtime event listener was not registered');
       }
 
       const emitRealtimeEvent = onEvent;
