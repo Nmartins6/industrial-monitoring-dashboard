@@ -118,8 +118,12 @@ describe('MachineMetricHistory', () => {
       within(metricHistoryRegion).getByText('2 medições no período'),
     ).toHaveClass('text-muted');
 
-    const temperatureSummary =
-      within(metricHistoryRegion).getByText(/Última temperatura:/);
+    const temperatureSummary = within(metricHistoryRegion).getByRole(
+      'article',
+      {
+        name: 'Resumo da temperatura',
+      },
+    );
 
     expect(temperatureSummary).toHaveClass(
       'border-border',
@@ -127,8 +131,9 @@ describe('MachineMetricHistory', () => {
       'text-foreground',
     );
 
-    const rotationSummary =
-      within(metricHistoryRegion).getByText(/Última rotação:/);
+    const rotationSummary = within(metricHistoryRegion).getByRole('article', {
+      name: 'Resumo da rotação',
+    });
 
     expect(rotationSummary).toHaveClass(
       'border-border',
@@ -136,8 +141,9 @@ describe('MachineMetricHistory', () => {
       'text-foreground',
     );
 
-    const efficiencySummary =
-      within(metricHistoryRegion).getByText(/Última eficiência:/);
+    const efficiencySummary = within(metricHistoryRegion).getByRole('article', {
+      name: 'Resumo da eficiência',
+    });
 
     expect(efficiencySummary).toHaveClass(
       'border-border',
@@ -174,6 +180,74 @@ describe('MachineMetricHistory', () => {
       'bg-surface',
       'text-foreground',
     );
+  });
+
+  it('shows the trend between the two most recent metric readings', () => {
+    const metricHistory: MetricHistoryTransport[] = [
+      {
+        timestamp: '2026-07-13T19:00:00.000Z',
+        temperature: 72,
+        rpm: 1240,
+        efficiency: 92,
+      },
+      {
+        timestamp: '2026-07-13T19:00:03.000Z',
+        temperature: 73.5,
+        rpm: 1200,
+        efficiency: 92,
+      },
+    ];
+
+    render(<MachineMetricHistory metricHistory={metricHistory} />);
+
+    const temperatureTrend = screen.getByRole('status', {
+      name: 'Tendência da temperatura',
+    });
+
+    expect(temperatureTrend).toHaveTextContent('Em alta');
+
+    const rotationTrend = screen.getByRole('status', {
+      name: 'Tendência da rotação',
+    });
+
+    expect(rotationTrend).toHaveTextContent('Em queda');
+
+    const efficiencyTrend = screen.getByRole('status', {
+      name: 'Tendência da eficiência',
+    });
+
+    expect(efficiencyTrend).toHaveTextContent('Estável');
+  });
+
+  it('shows unavailable trends when there are not enough readings', () => {
+    const metricHistory: MetricHistoryTransport[] = [
+      {
+        timestamp: '2026-07-13T19:00:00.000Z',
+        temperature: 72,
+        rpm: 1200,
+        efficiency: 92,
+      },
+    ];
+
+    render(<MachineMetricHistory metricHistory={metricHistory} />);
+
+    expect(
+      screen.getByRole('status', {
+        name: 'Tendência da temperatura',
+      }),
+    ).toHaveTextContent('Tendência indisponível');
+
+    expect(
+      screen.getByRole('status', {
+        name: 'Tendência da rotação',
+      }),
+    ).toHaveTextContent('Tendência indisponível');
+
+    expect(
+      screen.getByRole('status', {
+        name: 'Tendência da eficiência',
+      }),
+    ).toHaveTextContent('Tendência indisponível');
   });
 
   it('uses semantic colors for chart grids, axes and metric lines', () => {

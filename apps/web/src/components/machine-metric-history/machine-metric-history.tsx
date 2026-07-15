@@ -29,6 +29,13 @@ interface MetricLineChartProps {
   stroke: string;
 }
 
+type MetricTrend = 'up' | 'down' | 'stable' | 'unavailable';
+
+interface MetricTrendIndicatorProps {
+  accessibleLabel: string;
+  trend: MetricTrend;
+}
+
 function MetricLineChart({
   data,
   dataKey,
@@ -97,6 +104,76 @@ function MetricLineChart({
   );
 }
 
+const METRIC_TREND_PRESENTATION: Readonly<
+  Record<
+    MetricTrend,
+    {
+      symbol: string;
+      label: string;
+      className: string;
+    }
+  >
+> = {
+  up: {
+    symbol: '↑',
+    label: 'Em alta',
+    className: 'text-info',
+  },
+  down: {
+    symbol: '↓',
+    label: 'Em queda',
+    className: 'text-info',
+  },
+  stable: {
+    symbol: '→',
+    label: 'Estável',
+    className: 'text-muted',
+  },
+  unavailable: {
+    symbol: '—',
+    label: 'Tendência indisponível',
+    className: 'text-muted',
+  },
+};
+
+function calculateMetricTrend(
+  currentValue: number,
+  previousValue: number | undefined,
+): MetricTrend {
+  if (previousValue === undefined) {
+    return 'unavailable';
+  }
+
+  if (currentValue > previousValue) {
+    return 'up';
+  }
+
+  if (currentValue < previousValue) {
+    return 'down';
+  }
+
+  return 'stable';
+}
+
+function MetricTrendIndicator({
+  accessibleLabel,
+  trend,
+}: MetricTrendIndicatorProps) {
+  const presentation = METRIC_TREND_PRESENTATION[trend];
+
+  return (
+    <p
+      role="status"
+      aria-label={accessibleLabel}
+      className={`mt-2 flex items-center gap-1 text-sm font-medium ${presentation.className}`}
+    >
+      <span aria-hidden="true">{presentation.symbol}</span>
+
+      <span>{presentation.label}</span>
+    </p>
+  );
+}
+
 const metricNumberFormatter = new Intl.NumberFormat('pt-BR', {
   maximumFractionDigits: 1,
 });
@@ -112,10 +189,36 @@ export function MachineMetricHistory({
 }: MachineMetricHistoryProps) {
   const latestMetric = metricHistory[metricHistory.length - 1];
 
+  const previousMetric =
+    metricHistory.length >= 2
+      ? metricHistory[metricHistory.length - 2]
+      : undefined;
+
   const chartData: ChartMetric[] = metricHistory.map((metric) => ({
     ...metric,
     time: metricTimeFormatter.format(new Date(metric.timestamp)),
   }));
+
+  const temperatureTrend: MetricTrend =
+    latestMetric === undefined
+      ? 'unavailable'
+      : calculateMetricTrend(
+          latestMetric.temperature,
+          previousMetric?.temperature,
+        );
+
+  const rotationTrend: MetricTrend =
+    latestMetric === undefined
+      ? 'unavailable'
+      : calculateMetricTrend(latestMetric.rpm, previousMetric?.rpm);
+
+  const efficiencyTrend: MetricTrend =
+    latestMetric === undefined
+      ? 'unavailable'
+      : calculateMetricTrend(
+          latestMetric.efficiency,
+          previousMetric?.efficiency,
+        );
 
   return (
     <section aria-labelledby="machine-metric-history-title" className="mt-6">
@@ -137,26 +240,56 @@ export function MachineMetricHistory({
       ) : (
         <>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <p className="rounded-lg border border-border bg-surface p-4 text-sm text-foreground">
-              Última temperatura:{' '}
-              <strong>
-                {metricNumberFormatter.format(latestMetric.temperature)} °C
-              </strong>
-            </p>
+            <article
+              aria-label="Resumo da temperatura"
+              className="rounded-lg border border-border bg-surface p-4 text-sm text-foreground"
+            >
+              <p>
+                Última temperatura:{' '}
+                <strong>
+                  {metricNumberFormatter.format(latestMetric.temperature)} °C
+                </strong>
+              </p>
 
-            <p className="rounded-lg border border-border bg-surface p-4 text-sm text-foreground">
-              Última rotação:{' '}
-              <strong>
-                {metricNumberFormatter.format(latestMetric.rpm)} RPM
-              </strong>
-            </p>
+              <MetricTrendIndicator
+                accessibleLabel="Tendência da temperatura"
+                trend={temperatureTrend}
+              />
+            </article>
 
-            <p className="rounded-lg border border-border bg-surface p-4 text-sm text-foreground">
-              Última eficiência:{' '}
-              <strong>
-                {metricNumberFormatter.format(latestMetric.efficiency)}%
-              </strong>
-            </p>
+            <article
+              aria-label="Resumo da rotação"
+              className="rounded-lg border border-border bg-surface p-4 text-sm text-foreground"
+            >
+              <p>
+                Última rotação:{' '}
+                <strong>
+                  {metricNumberFormatter.format(latestMetric.rpm)} RPM
+                </strong>
+              </p>
+
+              <MetricTrendIndicator
+                accessibleLabel="Tendência da rotação"
+                trend={rotationTrend}
+              />
+            </article>
+
+            <article
+              aria-label="Resumo da eficiência"
+              className="rounded-lg border border-border bg-surface p-4 text-sm text-foreground"
+            >
+              <p>
+                Última eficiência:{' '}
+                <strong>
+                  {metricNumberFormatter.format(latestMetric.efficiency)}%
+                </strong>
+              </p>
+
+              <MetricTrendIndicator
+                accessibleLabel="Tendência da eficiência"
+                trend={efficiencyTrend}
+              />
+            </article>
           </div>
 
           <div className="mt-4 grid gap-4 lg:grid-cols-3">
