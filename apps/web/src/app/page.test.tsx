@@ -358,6 +358,84 @@ describe('Home page', () => {
     ).toBeInTheDocument();
   });
 
+  it('renders the theme selector in the dashboard header', async () => {
+    await renderHome();
+
+    const themeSelector = screen.getByRole('group', {
+      name: 'Seleção de tema',
+    });
+
+    expect(themeSelector).toBeInTheDocument();
+
+    expect(
+      within(themeSelector).getByRole('button', {
+        name: 'Usar tema claro',
+      }),
+    ).toBeInTheDocument();
+
+    expect(
+      within(themeSelector).getByRole('button', {
+        name: 'Usar tema escuro',
+      }),
+    ).toBeInTheDocument();
+
+    expect(
+      within(themeSelector).getByRole('button', {
+        name: 'Usar tema do sistema',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('renders the STW brand in the dashboard header', async () => {
+    await renderHome();
+
+    expect(
+      screen.getByRole('img', {
+        name: 'STW',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('uses the semantic theme colors in the dashboard header', async () => {
+    await renderHome();
+
+    const dashboardHeader = screen.getByRole('banner');
+
+    const headerContent = dashboardHeader.firstElementChild;
+
+    expect(headerContent).not.toBeNull();
+
+    expect(headerContent).toHaveClass(
+      'flex-col',
+      'items-stretch',
+      'gap-4',
+      'sm:flex-row',
+      'sm:items-center',
+      'sm:justify-between',
+    );
+
+    expect(dashboardHeader).toHaveClass('border-border');
+    expect(dashboardHeader).toHaveClass('bg-surface');
+    expect(dashboardHeader).toHaveClass('text-foreground');
+
+    expect(
+      within(dashboardHeader).getByText('Monitoramento de máquinas'),
+    ).toHaveClass('text-muted');
+
+    const dashboardTitle = within(dashboardHeader).getByRole('heading', {
+      level: 1,
+      name: 'Painel de Monitoramento Industrial',
+    });
+
+    expect(dashboardTitle).toHaveClass('text-xl', 'sm:text-2xl');
+
+    const headerActions = within(dashboardHeader).getByTestId(
+      'dashboard-header-actions',
+    );
+
+    expect(headerActions).toHaveClass('flex-wrap', 'gap-3', 'sm:justify-end');
+  });
+
   it('loads the machine snapshot through the dashboard dependency', async () => {
     const machineStatus: MachineStatusTransport = {
       id: 'mixer-01',
@@ -567,10 +645,16 @@ describe('Home page', () => {
       expect(alertItems).toHaveLength(1);
 
       expect(alertHistoryRegion).toHaveTextContent(
+        'A temperatura excedeu o limite crítico',
+      );
+
+      expect(alertHistoryRegion).not.toHaveTextContent(
         'Temperature exceeded the critical threshold',
       );
 
-      expect(alertHistoryRegion).toHaveTextContent('temperature-sensor');
+      expect(alertHistoryRegion).toHaveTextContent('Sensor de temperatura');
+
+      expect(alertHistoryRegion).not.toHaveTextContent('temperature-sensor');
 
       expect(alertHistoryRegion).toHaveTextContent('Aguardando reconhecimento');
 
@@ -606,24 +690,37 @@ describe('Home page', () => {
 
     render(page);
 
-    expect(
-      screen.getByRole('status', {
-        name: 'Status da conexão em tempo real',
-      }),
-    ).toHaveTextContent('Desconectado');
+    const connectionStatus = screen.getByRole('status', {
+      name: 'Status da conexão em tempo real',
+    });
+
+    expect(connectionStatus).toHaveTextContent('Desconectado');
+
+    expect(connectionStatus).toHaveClass(
+      'border-danger/30',
+      'bg-danger/10',
+      'text-danger',
+    );
 
     const errorAlert = screen.getByRole('alert');
 
-    expect(
-      within(errorAlert).getByRole('heading', {
-        level: 2,
-        name: 'Máquina não encontrada',
-      }),
-    ).toBeInTheDocument();
-
-    expect(errorAlert).toHaveTextContent(
-      'A máquina monitorada não foi encontrada.',
+    expect(errorAlert).toHaveClass(
+      'border-danger/30',
+      'bg-danger/10',
+      'text-foreground',
     );
+
+    const errorTitle = within(errorAlert).getByRole('heading', {
+      level: 2,
+      name: 'Máquina não encontrada',
+    });
+
+    expect(errorTitle).toBeInTheDocument();
+    expect(errorTitle).toHaveClass('text-danger');
+
+    expect(
+      within(errorAlert).getByText('A máquina monitorada não foi encontrada.'),
+    ).toHaveClass('text-muted');
 
     expect(
       screen.queryByRole('region', {
@@ -653,24 +750,39 @@ describe('Home page', () => {
 
     render(page);
 
-    expect(
-      screen.getByRole('status', {
-        name: 'Status da conexão em tempo real',
-      }),
-    ).toHaveTextContent('Desconectado');
+    const connectionStatus = screen.getByRole('status', {
+      name: 'Status da conexão em tempo real',
+    });
+
+    expect(connectionStatus).toHaveTextContent('Desconectado');
+
+    expect(connectionStatus).toHaveClass(
+      'border-danger/30',
+      'bg-danger/10',
+      'text-danger',
+    );
 
     const errorAlert = screen.getByRole('alert');
 
-    expect(
-      within(errorAlert).getByRole('heading', {
-        level: 2,
-        name: 'Dados da máquina indisponíveis',
-      }),
-    ).toBeInTheDocument();
-
-    expect(errorAlert).toHaveTextContent(
-      'Não foi possível carregar os dados mais recentes da máquina.',
+    expect(errorAlert).toHaveClass(
+      'border-danger/30',
+      'bg-danger/10',
+      'text-foreground',
     );
+
+    const errorTitle = within(errorAlert).getByRole('heading', {
+      level: 2,
+      name: 'Dados da máquina indisponíveis',
+    });
+
+    expect(errorTitle).toBeInTheDocument();
+    expect(errorTitle).toHaveClass('text-danger');
+
+    expect(
+      within(errorAlert).getByText(
+        'Não foi possível carregar os dados mais recentes da máquina.',
+      ),
+    ).toHaveClass('text-muted');
 
     expect(
       screen.queryByRole('region', {

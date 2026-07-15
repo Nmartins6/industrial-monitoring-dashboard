@@ -4,7 +4,7 @@ import { act, render, screen } from '@testing-library/react';
 import { MachineDataRetry } from './machine-data-retry';
 
 describe('MachineDataRetry', () => {
-  it('tenta carregar novamente os dados da máquina em intervalos regulares', () => {
+  it('Try reloading the machine data at regular intervals.', () => {
     let retryCallback: (() => void) | undefined;
 
     const cancelRetry = jest.fn();
@@ -25,11 +25,15 @@ describe('MachineDataRetry', () => {
       <MachineDataRetry onRetry={onRetry} scheduleRetry={scheduleRetry} />,
     );
 
-    expect(
-      screen.getByRole('status', {
-        name: 'Tentativa de reconexão',
-      }),
-    ).toHaveTextContent('Tentando reconectar automaticamente...');
+    const retryStatus = screen.getByRole('status', {
+      name: 'Tentativa de reconexão',
+    });
+
+    expect(retryStatus).toHaveTextContent(
+      'Tentando reconectar automaticamente...',
+    );
+
+    expect(retryStatus).toHaveClass('text-info');
 
     expect(scheduleRetry).toHaveBeenCalledTimes(1);
 

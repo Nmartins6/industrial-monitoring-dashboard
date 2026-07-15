@@ -1,14 +1,14 @@
 export default function Loading() {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="border-b border-slate-800 bg-slate-900">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 py-5">
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="border-b border-border bg-surface">
+        <div className="mx-auto flex max-w-7xl flex-col items-stretch gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-medium text-slate-400">
+            <p className="text-sm font-medium text-muted">
               Monitoramento de máquinas
             </p>
 
-            <h1 className="text-2xl font-semibold tracking-tight">
+            <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
               Painel de Monitoramento Industrial
             </h1>
           </div>
@@ -17,11 +17,11 @@ export default function Loading() {
             role="status"
             aria-label="Carregando dados da máquina"
             aria-live="polite"
-            className="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-800 px-3 py-2 text-sm font-medium text-slate-300"
+            className="flex self-start items-center gap-2 rounded-full border border-info/30 bg-info/10 px-3 py-2 text-sm font-medium text-info"
           >
             <span
               aria-hidden="true"
-              className="h-2 w-2 animate-pulse rounded-full bg-slate-400"
+              className="h-2 w-2 animate-pulse rounded-full bg-info"
             />
             Carregando dados da máquina...
           </div>
@@ -37,7 +37,7 @@ export default function Loading() {
             <div
               key={index}
               aria-hidden="true"
-              className="h-32 animate-pulse rounded-xl border border-slate-800 bg-slate-900"
+              className="h-32 animate-pulse rounded-xl border border-border bg-surface-secondary"
             />
           ))}
         </section>

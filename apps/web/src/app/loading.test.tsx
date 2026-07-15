@@ -1,23 +1,83 @@
 import { describe, expect, it } from '@jest/globals';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 
 import Loading from './loading';
 
 describe('Dashboard loading state', () => {
   it('shows that the machine data is being loaded', () => {
-    render(<Loading />);
+    const { container } = render(<Loading />);
 
-    const loadingStatus = screen.getByRole('status', {
-      name: 'Carregando dados da máquina',
-    });
+    const page = container.firstElementChild;
 
-    expect(loadingStatus).toHaveTextContent('Carregando dados da máquina...');
+    expect(page).not.toBeNull();
+    expect(page).toHaveClass(
+      'min-h-screen',
+      'bg-background',
+      'text-foreground',
+    );
+
+    const dashboardHeader = screen.getByRole('banner');
+
+    expect(dashboardHeader).toHaveClass('border-border', 'bg-surface');
+
+    const headerContent = dashboardHeader.firstElementChild;
+
+    expect(headerContent).not.toBeNull();
+
+    expect(headerContent).toHaveClass(
+      'flex-col',
+      'items-stretch',
+      'gap-4',
+      'px-6',
+      'py-5',
+      'sm:flex-row',
+      'sm:items-center',
+      'sm:justify-between',
+    );
+    expect(
+      within(dashboardHeader).getByText('Monitoramento de máquinas'),
+    ).toHaveClass('text-muted');
 
     expect(
       screen.getByRole('heading', {
         level: 1,
         name: 'Painel de Monitoramento Industrial',
       }),
-    ).toBeInTheDocument();
+    ).toHaveClass('text-xl', 'text-foreground', 'sm:text-2xl');
+
+    const loadingStatus = screen.getByRole('status', {
+      name: 'Carregando dados da máquina',
+    });
+
+    expect(loadingStatus).toHaveClass('self-start');
+
+    expect(loadingStatus).toHaveTextContent('Carregando dados da máquina...');
+
+    expect(loadingStatus).toHaveClass(
+      'border-info/30',
+      'bg-info/10',
+      'text-info',
+    );
+
+    const loadingIndicator = loadingStatus.querySelector(
+      '[aria-hidden="true"]',
+    );
+
+    expect(loadingIndicator).not.toBeNull();
+    expect(loadingIndicator).toHaveClass('bg-info');
+
+    const loadingMarkers = screen.getByRole('region', {
+      name: 'Marcadores de carregamento do painel',
+    });
+
+    const skeletons = loadingMarkers.querySelectorAll(
+      ':scope > [aria-hidden="true"]',
+    );
+
+    expect(skeletons).toHaveLength(3);
+
+    for (const skeleton of skeletons) {
+      expect(skeleton).toHaveClass('border-border', 'bg-surface-secondary');
+    }
   });
 });

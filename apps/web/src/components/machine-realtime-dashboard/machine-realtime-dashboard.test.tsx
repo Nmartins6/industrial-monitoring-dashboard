@@ -250,6 +250,12 @@ describe('MachineRealtimeDashboard', () => {
 
     expect(connectionStatus).toHaveTextContent('Conectando');
 
+    expect(connectionStatus).toHaveClass(
+      'border-info/30',
+      'bg-info/10',
+      'text-info',
+    );
+
     if (onConnectionChange === undefined) {
       throw new Error('Connection status listener was not registered');
     }
@@ -262,11 +268,23 @@ describe('MachineRealtimeDashboard', () => {
 
     expect(connectionStatus).toHaveTextContent('Conectado');
 
+    expect(connectionStatus).toHaveClass(
+      'border-success/30',
+      'bg-success/10',
+      'text-success',
+    );
+
     act(() => {
       changeConnectionStatus('disconnected');
     });
 
     expect(connectionStatus).toHaveTextContent('Desconectado');
+
+    expect(connectionStatus).toHaveClass(
+      'border-danger/30',
+      'bg-danger/10',
+      'text-danger',
+    );
 
     expect(connectToMachine).toHaveBeenCalledTimes(1);
   });
@@ -399,11 +417,14 @@ describe('MachineRealtimeDashboard', () => {
       },
     );
 
+    const playCriticalAlertSound = jest.fn();
+
     render(
       <MachineRealtimeDashboard
         initialMachineStatus={initialMachineStatus}
         initialAlerts={[]}
         connectToMachine={connectToMachine}
+        playCriticalAlertSound={playCriticalAlertSound}
       />,
     );
 
@@ -433,6 +454,8 @@ describe('MachineRealtimeDashboard', () => {
       emitRealtimeEvent(alertCreatedEvent);
     });
 
+    expect(playCriticalAlertSound).toHaveBeenCalledTimes(1);
+
     const alertHistory = screen.getByRole('region', {
       name: 'Histórico de alertas',
     });
@@ -454,10 +477,104 @@ describe('MachineRealtimeDashboard', () => {
       'Temperatura excedeu o limite crítico',
     );
 
-    expect(alertItems[0]).toHaveTextContent('temperature-sensor');
+    expect(alertItems[0]).toHaveTextContent('Sensor de temperatura');
+
+    expect(alertItems[0]).not.toHaveTextContent('temperature-sensor');
 
     expect(alertItems[0]).toHaveTextContent('Aguardando reconhecimento');
   });
+
+  it.each([
+    {
+      description: 'informativo não reconhecido',
+      level: 'INFO' as const,
+      acknowledged: false,
+    },
+    {
+      description: 'de aviso não reconhecido',
+      level: 'WARNING' as const,
+      acknowledged: false,
+    },
+    {
+      description: 'crítico já reconhecido',
+      level: 'CRITICAL' as const,
+      acknowledged: true,
+    },
+  ])(
+    'does not play the critical alert sound for an $description alert',
+    ({ level, acknowledged }) => {
+      const initialMachineStatus: MachineStatusTransport = {
+        id: 'mixer-01',
+        timestamp: '2026-07-13T19:00:00.000Z',
+        state: 'RUNNING',
+        metrics: {
+          temperature: 73.8,
+          rpm: 1234,
+          uptime: 3661,
+          efficiency: 92.4,
+        },
+        oee: {
+          overall: 87.6,
+          availability: 95.2,
+          performance: 94.1,
+          quality: 97.8,
+        },
+      };
+
+      let onEvent: ((event: RealtimeEvent) => void) | undefined;
+
+      const connectToMachine = jest.fn(
+        (
+          _machineId: string,
+          options: {
+            onEvent(event: RealtimeEvent): void;
+            onConnectionChange(status: 'connected' | 'disconnected'): void;
+          },
+        ) => {
+          onEvent = options.onEvent;
+
+          return jest.fn();
+        },
+      );
+
+      const playCriticalAlertSound = jest.fn();
+
+      render(
+        <MachineRealtimeDashboard
+          initialMachineStatus={initialMachineStatus}
+          initialAlerts={[]}
+          connectToMachine={connectToMachine}
+          playCriticalAlertSound={playCriticalAlertSound}
+        />,
+      );
+
+      if (onEvent === undefined) {
+        throw new Error('Realtime event listener was not registered');
+      }
+
+      const emitRealtimeEvent = onEvent;
+
+      const alertCreatedEvent: AlertCreatedEvent = {
+        id: `event-${level.toLowerCase()}`,
+        emittedAt: '2026-07-13T19:00:06.000Z',
+        type: 'ALERT_CREATED',
+        payload: {
+          id: `alert-${level.toLowerCase()}`,
+          level,
+          message: 'Machine monitoring event',
+          component: 'monitoring-system',
+          timestamp: '2026-07-13T19:00:06.000Z',
+          acknowledged,
+        },
+      };
+
+      act(() => {
+        emitRealtimeEvent(alertCreatedEvent);
+      });
+
+      expect(playCriticalAlertSound).not.toHaveBeenCalled();
+    },
+  );
 
   it('updates an existing alert received in real time', () => {
     const initialMachineStatus: MachineStatusTransport = {
@@ -1183,5 +1300,239 @@ describe('MachineRealtimeDashboard', () => {
         value: previousFetch,
       });
     }
+  });
+
+  it('displays a localized label for a known alert component', () => {
+    const initialMachineStatus: MachineStatusTransport = {
+      id: 'mixer-01',
+      timestamp: '2026-07-14T18:00:00.000Z',
+      state: 'RUNNING',
+      metrics: {
+        temperature: 82,
+        rpm: 1250,
+        uptime: 7200,
+        efficiency: 91,
+      },
+      oee: {
+        overall: 87,
+        availability: 95,
+        performance: 93,
+        quality: 98,
+      },
+    };
+
+    const alert: AlertTransport = {
+      id: 'alert-003',
+      level: 'CRITICAL',
+      message: 'Temperature exceeded the critical threshold',
+      component: 'temperature-sensor',
+      timestamp: '2026-07-14T18:00:00.000Z',
+      acknowledged: false,
+    };
+
+    render(
+      <MachineRealtimeDashboard
+        initialMachineStatus={initialMachineStatus}
+        initialAlerts={[alert]}
+        connectToMachine={() => jest.fn()}
+      />,
+    );
+
+    const alertHistoryRegion = screen.getByRole('region', {
+      name: 'Histórico de alertas',
+    });
+
+    expect(
+      within(alertHistoryRegion).getByText('Sensor de temperatura'),
+    ).toBeInTheDocument();
+
+    expect(
+      within(alertHistoryRegion).queryByText('temperature-sensor'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('displays a localized message for a known alert message', () => {
+    const initialMachineStatus: MachineStatusTransport = {
+      id: 'mixer-01',
+      timestamp: '2026-07-14T18:00:00.000Z',
+      state: 'RUNNING',
+      metrics: {
+        temperature: 82,
+        rpm: 1250,
+        uptime: 7200,
+        efficiency: 91,
+      },
+      oee: {
+        overall: 87,
+        availability: 95,
+        performance: 93,
+        quality: 98,
+      },
+    };
+
+    const alert: AlertTransport = {
+      id: 'alert-003',
+      level: 'CRITICAL',
+      message: 'Temperature exceeded the critical threshold',
+      component: 'temperature-sensor',
+      timestamp: '2026-07-14T18:00:00.000Z',
+      acknowledged: false,
+    };
+
+    render(
+      <MachineRealtimeDashboard
+        initialMachineStatus={initialMachineStatus}
+        initialAlerts={[alert]}
+        connectToMachine={() => jest.fn()}
+      />,
+    );
+
+    const alertHistoryRegion = screen.getByRole('region', {
+      name: 'Histórico de alertas',
+    });
+
+    expect(
+      within(alertHistoryRegion).getByText(
+        'A temperatura excedeu o limite crítico',
+      ),
+    ).toBeInTheDocument();
+
+    expect(
+      within(alertHistoryRegion).queryByText(
+        'Temperature exceeded the critical threshold',
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it('displays localized content for the remaining known alerts', () => {
+    const initialMachineStatus: MachineStatusTransport = {
+      id: 'mixer-01',
+      timestamp: '2026-07-14T18:00:00.000Z',
+      state: 'RUNNING',
+      metrics: {
+        temperature: 82,
+        rpm: 1250,
+        uptime: 7200,
+        efficiency: 91,
+      },
+      oee: {
+        overall: 87,
+        availability: 95,
+        performance: 93,
+        quality: 98,
+      },
+    };
+
+    const alerts: AlertTransport[] = [
+      {
+        id: 'alert-002',
+        level: 'WARNING',
+        message: 'Motor vibration is above the recommended level',
+        component: 'motor',
+        timestamp: '2026-07-14T17:55:00.000Z',
+        acknowledged: true,
+      },
+      {
+        id: 'alert-001',
+        level: 'INFO',
+        message: 'Machine monitoring started',
+        component: 'monitoring-system',
+        timestamp: '2026-07-14T17:50:00.000Z',
+        acknowledged: true,
+      },
+    ];
+
+    render(
+      <MachineRealtimeDashboard
+        initialMachineStatus={initialMachineStatus}
+        initialAlerts={alerts}
+        connectToMachine={() => jest.fn()}
+      />,
+    );
+
+    const alertHistoryRegion = screen.getByRole('region', {
+      name: 'Histórico de alertas',
+    });
+
+    expect(within(alertHistoryRegion).getByText('Motor')).toBeInTheDocument();
+
+    expect(
+      within(alertHistoryRegion).getByText(
+        'A vibração do motor está acima do nível recomendado',
+      ),
+    ).toBeInTheDocument();
+
+    expect(
+      within(alertHistoryRegion).getByText('Sistema de monitoramento'),
+    ).toBeInTheDocument();
+
+    expect(
+      within(alertHistoryRegion).getByText('Monitoramento da máquina iniciado'),
+    ).toBeInTheDocument();
+
+    expect(
+      within(alertHistoryRegion).queryByText(
+        'Motor vibration is above the recommended level',
+      ),
+    ).not.toBeInTheDocument();
+
+    expect(
+      within(alertHistoryRegion).queryByText('Machine monitoring started'),
+    ).not.toBeInTheDocument();
+
+    expect(
+      within(alertHistoryRegion).queryByText('monitoring-system'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('preserves unknown alert components and messages', () => {
+    const initialMachineStatus: MachineStatusTransport = {
+      id: 'mixer-01',
+      timestamp: '2026-07-14T18:00:00.000Z',
+      state: 'RUNNING',
+      metrics: {
+        temperature: 82,
+        rpm: 1250,
+        uptime: 7200,
+        efficiency: 91,
+      },
+      oee: {
+        overall: 87,
+        availability: 95,
+        performance: 93,
+        quality: 98,
+      },
+    };
+
+    const alert: AlertTransport = {
+      id: 'alert-unknown',
+      level: 'WARNING',
+      message: 'Hydraulic pressure requires inspection',
+      component: 'hydraulic-system',
+      timestamp: '2026-07-14T18:00:00.000Z',
+      acknowledged: false,
+    };
+
+    render(
+      <MachineRealtimeDashboard
+        initialMachineStatus={initialMachineStatus}
+        initialAlerts={[alert]}
+        connectToMachine={() => jest.fn()}
+      />,
+    );
+
+    const alertHistoryRegion = screen.getByRole('region', {
+      name: 'Histórico de alertas',
+    });
+
+    expect(
+      within(alertHistoryRegion).getByText('hydraulic-system'),
+    ).toBeInTheDocument();
+
+    expect(
+      within(alertHistoryRegion).getByText(
+        'Hydraulic pressure requires inspection',
+      ),
+    ).toBeInTheDocument();
   });
 });

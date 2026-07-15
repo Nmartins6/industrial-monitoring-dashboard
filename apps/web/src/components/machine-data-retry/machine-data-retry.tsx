@@ -43,7 +43,7 @@ function RetryScheduler({ onRetry, scheduleRetry }: RetrySchedulerProps) {
       role="status"
       aria-label="Tentativa de reconexão"
       aria-live="polite"
-      className="mt-4 text-sm text-slate-300"
+      className="mt-4 text-sm text-info"
     >
       Tentando reconectar automaticamente...
     </p>

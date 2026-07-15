@@ -9,6 +9,7 @@ import type {
   RealtimeEvent,
 } from '@industrial-monitoring/contracts';
 
+import { MachineAlertHistory } from '@/components/machine-alert-history/machine-alert-history';
 import { MachineMetricHistory } from '@/components/machine-metric-history/machine-metric-history';
 import { MachineSnapshot } from '@/components/machine-snapshot/machine-snapshot';
 import { createMachineApiClient } from '@/lib/api/machine-api-client';
@@ -36,12 +37,15 @@ type AcknowledgeAlert = (
   alertId: string,
 ) => Promise<AlertTransport>;
 
+type PlayCriticalAlertSound = () => void;
+
 interface MachineRealtimeDashboardProps {
   initialMachineStatus: MachineStatusTransport;
   initialMetricHistory?: readonly MetricHistoryTransport[];
   initialAlerts?: readonly AlertTransport[];
   connectToMachine?: ConnectToMachine;
   acknowledgeAlert?: AcknowledgeAlert;
+  playCriticalAlertSound?: PlayCriticalAlertSound;
 }
 
 const DEFAULT_API_BASE_URL = 'http://localhost:3333';
@@ -52,25 +56,72 @@ const CONNECTION_STATUS_LABELS: Record<DisplayConnectionStatus, string> = {
   disconnected: 'Desconectado',
 };
 
-const ALERT_LEVEL_LABELS: Record<AlertTransport['level'], string> = {
-  INFO: 'Informativo',
-  WARNING: 'Aviso',
-  CRITICAL: 'Crítico',
-};
-
-const ALERT_LEVEL_ACCESSIBLE_LABELS: Record<AlertTransport['level'], string> = {
-  INFO: 'informativo',
-  WARNING: 'de aviso',
-  CRITICAL: 'crítico',
+const CONNECTION_STATUS_STYLES: Readonly<
+  Record<DisplayConnectionStatus, string>
+> = {
+  connecting: 'border-info/30 bg-info/10 text-info',
+  connected: 'border-success/30 bg-success/10 text-success',
+  disconnected: 'border-danger/30 bg-danger/10 text-danger',
 };
 
 const METRIC_HISTORY_LIMIT = 30;
 
-const timeFormatter = new Intl.DateTimeFormat('pt-BR', {
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-});
+const playCriticalAlertWithBrowserAudio: PlayCriticalAlertSound = () => {
+  if (
+    typeof window === 'undefined' ||
+    typeof window.AudioContext === 'undefined'
+  ) {
+    return;
+  }
+
+  const audioContext = new window.AudioContext();
+
+  const playTone = () => {
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+
+    const startTime = audioContext.currentTime;
+    const endTime = startTime + 0.25;
+
+    oscillator.type = 'square';
+    oscillator.frequency.setValueAtTime(880, startTime);
+
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.12, startTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, endTime);
+
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+
+    oscillator.addEventListener(
+      'ended',
+      () => {
+        void audioContext.close();
+      },
+      {
+        once: true,
+      },
+    );
+
+    oscillator.start(startTime);
+    oscillator.stop(endTime);
+  };
+
+  if (audioContext.state === 'suspended') {
+    void audioContext
+      .resume()
+      .then(() => {
+        playTone();
+      })
+      .catch(() => {
+        void audioContext.close();
+      });
+
+    return;
+  }
+
+  playTone();
+};
 
 const connectWithBrowserEventSource: ConnectToMachine = (
   machineId,
@@ -115,6 +166,7 @@ export function MachineRealtimeDashboard({
   initialAlerts,
   connectToMachine,
   acknowledgeAlert,
+  playCriticalAlertSound,
 }: MachineRealtimeDashboardProps) {
   const [machineStatus, setMachineStatus] = useState(initialMachineStatus);
 
@@ -141,6 +193,9 @@ export function MachineRealtimeDashboard({
   const isMetricHistoryEnabled = initialMetricHistory !== undefined;
 
   const acknowledgeMachineAlert = acknowledgeAlert ?? acknowledgeWithBrowserApi;
+
+  const notifyCriticalAlert =
+    playCriticalAlertSound ?? playCriticalAlertWithBrowserAudio;
 
   async function handleAcknowledgeAlert(alertId: string): Promise<void> {
     if (acknowledgingAlertIds.has(alertId)) {
@@ -215,6 +270,13 @@ export function MachineRealtimeDashboard({
         }
 
         if (event.type === 'ALERT_CREATED') {
+          if (
+            event.payload.level === 'CRITICAL' &&
+            !event.payload.acknowledged
+          ) {
+            notifyCriticalAlert();
+          }
+
           setAlerts((currentAlerts) => [event.payload, ...currentAlerts]);
 
           return;
@@ -235,7 +297,9 @@ export function MachineRealtimeDashboard({
     });
 
     return disconnect;
-  }, [connectToMachine, initialMachineStatus.id]);
+  }, [connectToMachine, initialMachineStatus.id, notifyCriticalAlert]);
+
+  const connectionStatusStyle = CONNECTION_STATUS_STYLES[connectionStatus];
 
   return (
     <>
@@ -244,7 +308,7 @@ export function MachineRealtimeDashboard({
           role="status"
           aria-label="Status da conexão em tempo real"
           aria-live="polite"
-          className="rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300"
+          className={`rounded-full border px-4 py-2 text-sm font-medium ${connectionStatusStyle}`}
         >
           {CONNECTION_STATUS_LABELS[connectionStatus]}
         </div>
@@ -257,104 +321,14 @@ export function MachineRealtimeDashboard({
       ) : null}
 
       {isAlertHistoryEnabled ? (
-        <section
-          aria-labelledby="realtime-alert-history-title"
-          className="mt-6"
-        >
-          <div className="flex items-center justify-between">
-            <h2
-              id="realtime-alert-history-title"
-              className="text-lg font-semibold"
-            >
-              Histórico de alertas
-            </h2>
-
-            <p className="text-sm text-slate-400">
-              Eventos mais recentes da máquina
-            </p>
-          </div>
-
-          <ul className="mt-4 space-y-3">
-            {alerts.map((alert) => {
-              const isAcknowledging = acknowledgingAlertIds.has(alert.id);
-
-              const hasAcknowledgementError = acknowledgementErrorAlertIds.has(
-                alert.id,
-              );
-
-              const levelLabel = ALERT_LEVEL_LABELS[alert.level];
-
-              const accessibleLevelLabel =
-                ALERT_LEVEL_ACCESSIBLE_LABELS[alert.level];
-
-              return (
-                <li
-                  key={alert.id}
-                  className="rounded-xl border border-slate-800 bg-slate-900 p-5"
-                >
-                  <article>
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-3">
-                          <p className="text-sm font-semibold">{levelLabel}</p>
-
-                          <p className="text-xs text-slate-400">
-                            {alert.component}
-                          </p>
-                        </div>
-
-                        <p className="mt-2 text-sm text-slate-200">
-                          {alert.message}
-                        </p>
-                      </div>
-
-                      <time
-                        aria-label={`Horário do alerta ${accessibleLevelLabel}`}
-                        dateTime={alert.timestamp}
-                        className="text-sm text-slate-400"
-                      >
-                        {timeFormatter.format(new Date(alert.timestamp))}
-                      </time>
-                    </div>
-
-                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                      <p className="text-xs text-slate-500">
-                        {alert.acknowledged
-                          ? 'Reconhecido'
-                          : 'Aguardando reconhecimento'}
-                      </p>
-
-                      {!alert.acknowledged ? (
-                        <button
-                          type="button"
-                          aria-label={`${
-                            isAcknowledging ? 'Reconhecendo' : 'Reconhecer'
-                          } alerta ${accessibleLevelLabel}`}
-                          aria-busy={isAcknowledging}
-                          disabled={isAcknowledging}
-                          className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm font-medium text-slate-100 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-                          onClick={() => {
-                            void handleAcknowledgeAlert(alert.id);
-                          }}
-                        >
-                          {isAcknowledging
-                            ? 'Reconhecendo...'
-                            : 'Reconhecer alerta'}
-                        </button>
-                      ) : null}
-                    </div>
-
-                    {hasAcknowledgementError ? (
-                      <p role="alert">
-                        Não foi possível reconhecer o alerta. Tente novamente.
-                      </p>
-                    ) : null}
-                  </article>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
+        <MachineAlertHistory
+          alerts={alerts}
+          acknowledgingAlertIds={acknowledgingAlertIds}
+          acknowledgementErrorAlertIds={acknowledgementErrorAlertIds}
+          onAcknowledgeAlert={(alertId) => {
+            void handleAcknowledgeAlert(alertId);
+          }}
+        />
       ) : null}
     </>
   );
