@@ -37,12 +37,15 @@ type AcknowledgeAlert = (
   alertId: string,
 ) => Promise<AlertTransport>;
 
+type PlayCriticalAlertSound = () => void;
+
 interface MachineRealtimeDashboardProps {
   initialMachineStatus: MachineStatusTransport;
   initialMetricHistory?: readonly MetricHistoryTransport[];
   initialAlerts?: readonly AlertTransport[];
   connectToMachine?: ConnectToMachine;
   acknowledgeAlert?: AcknowledgeAlert;
+  playCriticalAlertSound?: PlayCriticalAlertSound;
 }
 
 const DEFAULT_API_BASE_URL = 'http://localhost:3333';
@@ -62,6 +65,63 @@ const CONNECTION_STATUS_STYLES: Readonly<
 };
 
 const METRIC_HISTORY_LIMIT = 30;
+
+const playCriticalAlertWithBrowserAudio: PlayCriticalAlertSound = () => {
+  if (
+    typeof window === 'undefined' ||
+    typeof window.AudioContext === 'undefined'
+  ) {
+    return;
+  }
+
+  const audioContext = new window.AudioContext();
+
+  const playTone = () => {
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+
+    const startTime = audioContext.currentTime;
+    const endTime = startTime + 0.25;
+
+    oscillator.type = 'square';
+    oscillator.frequency.setValueAtTime(880, startTime);
+
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.12, startTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, endTime);
+
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+
+    oscillator.addEventListener(
+      'ended',
+      () => {
+        void audioContext.close();
+      },
+      {
+        once: true,
+      },
+    );
+
+    oscillator.start(startTime);
+    oscillator.stop(endTime);
+  };
+
+  if (audioContext.state === 'suspended') {
+    void audioContext
+      .resume()
+      .then(() => {
+        playTone();
+      })
+      .catch(() => {
+        void audioContext.close();
+      });
+
+    return;
+  }
+
+  playTone();
+};
 
 const connectWithBrowserEventSource: ConnectToMachine = (
   machineId,
@@ -106,6 +166,7 @@ export function MachineRealtimeDashboard({
   initialAlerts,
   connectToMachine,
   acknowledgeAlert,
+  playCriticalAlertSound,
 }: MachineRealtimeDashboardProps) {
   const [machineStatus, setMachineStatus] = useState(initialMachineStatus);
 
@@ -132,6 +193,9 @@ export function MachineRealtimeDashboard({
   const isMetricHistoryEnabled = initialMetricHistory !== undefined;
 
   const acknowledgeMachineAlert = acknowledgeAlert ?? acknowledgeWithBrowserApi;
+
+  const notifyCriticalAlert =
+    playCriticalAlertSound ?? playCriticalAlertWithBrowserAudio;
 
   async function handleAcknowledgeAlert(alertId: string): Promise<void> {
     if (acknowledgingAlertIds.has(alertId)) {
@@ -206,6 +270,13 @@ export function MachineRealtimeDashboard({
         }
 
         if (event.type === 'ALERT_CREATED') {
+          if (
+            event.payload.level === 'CRITICAL' &&
+            !event.payload.acknowledged
+          ) {
+            notifyCriticalAlert();
+          }
+
           setAlerts((currentAlerts) => [event.payload, ...currentAlerts]);
 
           return;
@@ -226,7 +297,7 @@ export function MachineRealtimeDashboard({
     });
 
     return disconnect;
-  }, [connectToMachine, initialMachineStatus.id]);
+  }, [connectToMachine, initialMachineStatus.id, notifyCriticalAlert]);
 
   const connectionStatusStyle = CONNECTION_STATUS_STYLES[connectionStatus];
 

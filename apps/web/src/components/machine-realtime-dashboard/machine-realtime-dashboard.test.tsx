@@ -417,11 +417,14 @@ describe('MachineRealtimeDashboard', () => {
       },
     );
 
+    const playCriticalAlertSound = jest.fn();
+
     render(
       <MachineRealtimeDashboard
         initialMachineStatus={initialMachineStatus}
         initialAlerts={[]}
         connectToMachine={connectToMachine}
+        playCriticalAlertSound={playCriticalAlertSound}
       />,
     );
 
@@ -451,6 +454,8 @@ describe('MachineRealtimeDashboard', () => {
       emitRealtimeEvent(alertCreatedEvent);
     });
 
+    expect(playCriticalAlertSound).toHaveBeenCalledTimes(1);
+
     const alertHistory = screen.getByRole('region', {
       name: 'Histórico de alertas',
     });
@@ -478,6 +483,102 @@ describe('MachineRealtimeDashboard', () => {
 
     expect(alertItems[0]).toHaveTextContent('Aguardando reconhecimento');
   });
+
+  it.each([
+    {
+      description: 'informativo não reconhecido',
+      level: 'INFO' as const,
+      acknowledged: false,
+    },
+    {
+      description: 'de aviso não reconhecido',
+      level: 'WARNING' as const,
+      acknowledged: false,
+    },
+    {
+      description: 'crítico já reconhecido',
+      level: 'CRITICAL' as const,
+      acknowledged: true,
+    },
+  ])(
+    'does not play the critical alert sound for an $description alert',
+    ({ level, acknowledged }) => {
+      const initialMachineStatus: MachineStatusTransport = {
+        id: 'mixer-01',
+        timestamp: '2026-07-13T19:00:00.000Z',
+        state: 'RUNNING',
+        metrics: {
+          temperature: 73.8,
+          rpm: 1234,
+          uptime: 3661,
+          efficiency: 92.4,
+        },
+        oee: {
+          overall: 87.6,
+          availability: 95.2,
+          performance: 94.1,
+          quality: 97.8,
+        },
+      };
+
+      let onEvent: ((event: RealtimeEvent) => void) | undefined;
+
+      const connectToMachine = jest.fn(
+        (
+          _machineId: string,
+          options: {
+            onEvent(event: RealtimeEvent): void;
+            onConnectionChange(
+              status: 'connected' | 'disconnected',
+            ): void;
+          },
+        ) => {
+          onEvent = options.onEvent;
+
+          return jest.fn();
+        },
+      );
+
+      const playCriticalAlertSound = jest.fn();
+
+      render(
+        <MachineRealtimeDashboard
+          initialMachineStatus={initialMachineStatus}
+          initialAlerts={[]}
+          connectToMachine={connectToMachine}
+          playCriticalAlertSound={playCriticalAlertSound}
+        />,
+      );
+
+      if (onEvent === undefined) {
+        throw new Error(
+          'Realtime event listener was not registered',
+        );
+      }
+
+      const emitRealtimeEvent = onEvent;
+
+      const alertCreatedEvent: AlertCreatedEvent = {
+        id: `event-${level.toLowerCase()}`,
+        emittedAt: '2026-07-13T19:00:06.000Z',
+        type: 'ALERT_CREATED',
+        payload: {
+          id: `alert-${level.toLowerCase()}`,
+          level,
+          message: 'Machine monitoring event',
+          component: 'monitoring-system',
+          timestamp: '2026-07-13T19:00:06.000Z',
+          acknowledged,
+        },
+      };
+
+      act(() => {
+        emitRealtimeEvent(alertCreatedEvent);
+      });
+
+      expect(playCriticalAlertSound).not.toHaveBeenCalled();
+    },
+  );
 
   it('updates an existing alert received in real time', () => {
     const initialMachineStatus: MachineStatusTransport = {
