@@ -138,6 +138,71 @@ Storybook:
 pnpm storybook
 ```
 
+## Execução com Docker
+
+O projeto possui imagens separadas para API e frontend, coordenadas pelo Docker
+Compose. O SQLite da API é armazenado em um volume nomeado e permanece entre
+reinicializações dos containers.
+
+Pré-requisitos:
+
+```text
+Docker Engine com Docker Compose v2
+```
+
+Construa e inicie todo o sistema:
+
+```bash
+docker compose up --build
+```
+
+Endereços:
+
+```text
+Frontend: http://localhost:3000
+API:      http://localhost:3333
+Health:   http://localhost:3333/health
+```
+
+Execute em segundo plano:
+
+```bash
+docker compose up --build --detach
+```
+
+Consulte os logs:
+
+```bash
+docker compose logs --follow
+```
+
+Encerre os containers:
+
+```bash
+docker compose down
+```
+
+O comando acima preserva o volume `api-data`. Para também apagar o banco
+persistido no volume:
+
+```bash
+docker compose down --volumes
+```
+
+As portas e origens públicas podem ser personalizadas:
+
+```bash
+API_PORT=3333 \
+WEB_PORT=3000 \
+WEB_ORIGIN=http://localhost:3000 \
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3333 \
+docker compose up --build
+```
+
+`API_BASE_URL` usa internamente `http://api:3333`, pois `api` é o nome do serviço
+na rede do Compose. `NEXT_PUBLIC_API_BASE_URL` é incorporada ao bundle durante o
+build e precisa ser uma URL acessível pelo navegador.
+
 ## Variáveis de ambiente
 
 ```text
